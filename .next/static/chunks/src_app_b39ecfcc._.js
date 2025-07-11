@@ -1,5 +1,80 @@
 (globalThis.TURBOPACK = globalThis.TURBOPACK || []).push([typeof document === "object" ? document.currentScript : undefined, {
 
+"[project]/src/app/components/SelectedDiceView.tsx [app-client] (ecmascript)": ((__turbopack_context__) => {
+"use strict";
+
+var { g: global, __dirname, k: __turbopack_refresh__, m: module } = __turbopack_context__;
+{
+__turbopack_context__.s({
+    "default": (()=>__TURBOPACK__default__export__)
+});
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/three/build/three.module.js [app-client] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/three/build/three.core.js [app-client] (ecmascript)");
+;
+var _s = __turbopack_context__.k.signature();
+;
+;
+const SelectedDiceView = ({ mesh })=>{
+    _s();
+    const viewRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "SelectedDiceView.useEffect": ()=>{
+            if (!viewRef.current) return;
+            const renderer = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["WebGLRenderer"]({
+                canvas: viewRef.current,
+                alpha: true,
+                antialias: true
+            });
+            renderer.setSize(100, 100);
+            const scene = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Scene"]();
+            const camera = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PerspectiveCamera"](45, 1, 0.1, 100);
+            camera.position.set(0, 3, -3);
+            camera.lookAt(0, 0, 0);
+            scene.add(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AmbientLight"](0xffffff, 1));
+            // 복제한 주사위
+            const clone = mesh.clone(true);
+            if (Array.isArray(mesh.material)) {
+                clone.material = mesh.material.map({
+                    "SelectedDiceView.useEffect": (m)=>m.clone()
+                }["SelectedDiceView.useEffect"]);
+            }
+            clone.position.set(0, 0, 0);
+            clone.quaternion.copy(mesh.quaternion); // 굴려진 방향 그대로 유지
+            scene.add(clone);
+            renderer.render(scene, camera);
+            return ({
+                "SelectedDiceView.useEffect": ()=>{
+                    renderer.dispose();
+                }
+            })["SelectedDiceView.useEffect"];
+        }
+    }["SelectedDiceView.useEffect"], [
+        mesh
+    ]);
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("canvas", {
+        ref: viewRef,
+        style: {
+            width: 80,
+            height: 80
+        },
+        className: "rounded-lg shadow"
+    }, void 0, false, {
+        fileName: "[project]/src/app/components/SelectedDiceView.tsx",
+        lineNumber: 36,
+        columnNumber: 10
+    }, this);
+};
+_s(SelectedDiceView, "+1UFPp6aBTvtBt11VxaordythQA=");
+_c = SelectedDiceView;
+const __TURBOPACK__default__export__ = SelectedDiceView;
+var _c;
+__turbopack_context__.k.register(_c, "SelectedDiceView");
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(module, globalThis.$RefreshHelpers$);
+}
+}}),
 "[project]/src/app/components/DiceRoller.tsx [app-client] (ecmascript)": ((__turbopack_context__) => {
 "use strict";
 
@@ -13,9 +88,11 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/three/build/three.core.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/three/build/three.module.js [app-client] (ecmascript) <locals>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/cannon-es/dist/cannon-es.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$app$2f$components$2f$SelectedDiceView$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/app/components/SelectedDiceView.tsx [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
 'use client';
+;
 ;
 ;
 ;
@@ -30,15 +107,12 @@ const DiceRoller = ()=>{
     const physicsWorldRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     const diceArrayRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])([]);
     const [selectedMeshes, setSelectedMeshes] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
-    const [selectedDiceMap, setSelectedDiceMap] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(new Map());
-    const selectedCountRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(0); // 선택된 주사위 개수 추적
-    const selectedMeshRefs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])([]);
     const fixedPositions = [
-        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](6, 0, 0),
-        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](6, 0, 2),
-        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](6, 0, -2),
-        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](6, 0, 4),
-        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](6, 0, -4)
+        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, 0, 0),
+        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, 1.5, 0),
+        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, 3.0, 0),
+        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, 4.5, 0),
+        new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, 6.0, 0)
     ];
     const params = {
         numberOfDice: 5,
@@ -397,95 +471,38 @@ const DiceRoller = ()=>{
                     mouse.x = (event.clientX - rect.left) / rect.width * 2 - 1;
                     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
                     raycaster.setFromCamera(mouse, camera);
-                    const intersects = raycaster.intersectObjects([
-                        ...diceArrayRef.current.map({
-                            "DiceRoller.useEffect.onClick.intersects": (d)=>d.mesh
-                        }["DiceRoller.useEffect.onClick.intersects"]),
-                        ...selectedMeshRefs.current
-                    ]);
-                    if (intersects.length === 0) return;
-                    const clickedMesh = intersects[0].object;
-                    // 🎯 복제 메시 클릭 → 복원
-                    const matchedMesh = selectedMeshRefs.current.find({
-                        "DiceRoller.useEffect.onClick.matchedMesh": (m)=>m.uuid === clickedMesh.uuid
-                    }["DiceRoller.useEffect.onClick.matchedMesh"]);
-                    if (matchedMesh) {
-                        console.log("hihi");
-                        const originalDice = selectedDiceMap.get(clickedMesh.uuid);
-                        if (!originalDice) {
-                            console.warn('originalDice not found for uuid:', clickedMesh.uuid);
-                            return;
-                        }
-                        // ✅ 복제 메시 제거
-                        scene.remove(matchedMesh);
-                        selectedMeshRefs.current = selectedMeshRefs.current.filter({
-                            "DiceRoller.useEffect.onClick": (m)=>m.uuid !== matchedMesh.uuid
-                        }["DiceRoller.useEffect.onClick"]);
-                        // ✅ 선택 상태 해제
-                        originalDice.selected = false;
-                        // ✅ 위치/회전 복원
-                        if (originalDice.finalPosition && originalDice.finalQuaternion) {
-                            originalDice.body.position.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](originalDice.finalPosition.x, originalDice.finalPosition.y, originalDice.finalPosition.z));
-                            originalDice.mesh.position.copy(originalDice.finalPosition);
-                            originalDice.body.quaternion.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Quaternion"](originalDice.finalQuaternion.x, originalDice.finalQuaternion.y, originalDice.finalQuaternion.z, originalDice.finalQuaternion.w));
-                            originalDice.mesh.quaternion.copy(originalDice.finalQuaternion);
-                        }
-                        // ✅ 물리 속도 제거 및 wakeUp
-                        originalDice.body.velocity.setZero();
-                        originalDice.body.angularVelocity.setZero();
-                        originalDice.body.wakeUp();
-                        // ✅ 다시 scene에 추가
-                        scene.add(originalDice.mesh);
-                        // ✅ 상태 정리
+                    const intersects = raycaster.intersectObjects(diceArrayRef.current.map({
+                        "DiceRoller.useEffect.onClick.intersects": (d)=>d.mesh
+                    }["DiceRoller.useEffect.onClick.intersects"]));
+                    if (intersects.length > 0) {
+                        const clickedMesh = intersects[0].object;
+                        const diceItem = diceArrayRef.current.find({
+                            "DiceRoller.useEffect.onClick.diceItem": (d)=>d.mesh === clickedMesh
+                        }["DiceRoller.useEffect.onClick.diceItem"]);
+                        if (!diceItem || diceItem.selected) return;
+                        // 1️⃣ 선택 표시
+                        diceItem.selected = true;
+                        // 2️⃣ 현재 회전/위치 저장
+                        diceItem.finalPosition = diceItem.mesh.position.clone();
+                        diceItem.finalQuaternion = diceItem.mesh.quaternion.clone();
+                        // 3️⃣ 씬에서 제거
+                        scene.remove(diceItem.mesh);
+                        // 4️⃣ 새 메시 생성 (같은 모양, 같은 회전)
+                        const newMesh = diceItem.mesh.clone();
+                        newMesh.position.copy(fixedPositions[selectedMeshes.length] ?? new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, 0, 0));
+                        newMesh.quaternion.copy(diceItem.finalQuaternion);
+                        // 그림자 등 옵션 유지
+                        newMesh.castShadow = true;
+                        // 5️⃣ 씬에 추가
+                        scene.add(newMesh);
+                        // 6️⃣ 오른쪽 UI에 표시
                         setSelectedMeshes({
-                            "DiceRoller.useEffect.onClick": (prev)=>prev.filter({
-                                    "DiceRoller.useEffect.onClick": (m)=>m.uuid !== clickedMesh.uuid
-                                }["DiceRoller.useEffect.onClick"])
+                            "DiceRoller.useEffect.onClick": (prev)=>[
+                                    ...prev,
+                                    newMesh
+                                ]
                         }["DiceRoller.useEffect.onClick"]);
-                        setSelectedDiceMap({
-                            "DiceRoller.useEffect.onClick": (prev)=>{
-                                const map = new Map(prev);
-                                map.delete(clickedMesh.uuid);
-                                return map;
-                            }
-                        }["DiceRoller.useEffect.onClick"]);
-                        selectedCountRef.current -= 1;
-                        return;
-                    } else console.log("byebye");
-                    // 🎲 원래 주사위 클릭 → 복제 및 이동
-                    const diceItem = diceArrayRef.current.find({
-                        "DiceRoller.useEffect.onClick.diceItem": (d)=>d.mesh === clickedMesh
-                    }["DiceRoller.useEffect.onClick.diceItem"]);
-                    if (!diceItem || diceItem.selected) return;
-                    diceItem.selected = true;
-                    diceItem.finalPosition = diceItem.mesh.position.clone();
-                    diceItem.finalQuaternion = diceItem.mesh.quaternion.clone();
-                    scene.remove(diceItem.mesh);
-                    // ✅ 현재 선택된 개수 기준 위치 계산
-                    const currentSelectedCount = selectedCountRef.current;
-                    const targetPosition = fixedPositions[currentSelectedCount] ?? new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, currentSelectedCount * 1.5, 0);
-                    const newMesh = diceItem.mesh.clone();
-                    newMesh.userData.uuidForMap = newMesh.uuid;
-                    newMesh.userData.originalId = diceItem.id; // 추적용 커스텀 필드
-                    newMesh.position.copy(targetPosition);
-                    newMesh.quaternion.copy(diceItem.finalQuaternion);
-                    newMesh.castShadow = true;
-                    scene.add(newMesh);
-                    selectedMeshRefs.current.push(newMesh);
-                    setSelectedMeshes({
-                        "DiceRoller.useEffect.onClick": (prev)=>[
-                                ...prev,
-                                newMesh
-                            ]
-                    }["DiceRoller.useEffect.onClick"]);
-                    setSelectedDiceMap({
-                        "DiceRoller.useEffect.onClick": (prev)=>{
-                            const map = new Map(prev);
-                            map.set(newMesh.userData.uuidForMap, diceItem);
-                            return map;
-                        }
-                    }["DiceRoller.useEffect.onClick"]);
-                    selectedCountRef.current += 1; // ✅ 수동 증가
+                    }
                 }
             }["DiceRoller.useEffect.onClick"];
             canvas.addEventListener('click', onClick);
@@ -504,19 +521,7 @@ const DiceRoller = ()=>{
                 className: "absolute top-0 left-0 w-full h-full z-0"
             }, void 0, false, {
                 fileName: "[project]/src/app/components/DiceRoller.tsx",
-                lineNumber: 436,
-                columnNumber: 7
-            }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium",
-                children: [
-                    "선택된 주사위: ",
-                    selectedMeshes.length,
-                    "개"
-                ]
-            }, void 0, true, {
-                fileName: "[project]/src/app/components/DiceRoller.tsx",
-                lineNumber: 437,
+                lineNumber: 361,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -527,7 +532,7 @@ const DiceRoller = ()=>{
                         className: "text-lg font-semibold bg-white px-4 py-2 rounded shadow"
                     }, void 0, false, {
                         fileName: "[project]/src/app/components/DiceRoller.tsx",
-                        lineNumber: 443,
+                        lineNumber: 366,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -536,23 +541,54 @@ const DiceRoller = ()=>{
                         children: "Throw the Dice"
                     }, void 0, false, {
                         fileName: "[project]/src/app/components/DiceRoller.tsx",
-                        lineNumber: 444,
+                        lineNumber: 367,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/components/DiceRoller.tsx",
-                lineNumber: 441,
+                lineNumber: 364,
                 columnNumber: 7
+            }, this),
+            selectedMeshes.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "absolute top-4 right-4 z-20 bg-white p-4 rounded-lg shadow",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "mb-2 font-semibold text-gray-700 text-center",
+                        children: "🎯 Selected Dice"
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/components/DiceRoller.tsx",
+                        lineNumber: 378,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex flex-col items-center gap-2",
+                        children: selectedMeshes.map((mesh, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$app$2f$components$2f$SelectedDiceView$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                                mesh: mesh
+                            }, index, false, {
+                                fileName: "[project]/src/app/components/DiceRoller.tsx",
+                                lineNumber: 381,
+                                columnNumber: 15
+                            }, this))
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/components/DiceRoller.tsx",
+                        lineNumber: 379,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/app/components/DiceRoller.tsx",
+                lineNumber: 377,
+                columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/components/DiceRoller.tsx",
-        lineNumber: 434,
+        lineNumber: 359,
         columnNumber: 5
     }, this);
 };
-_s(DiceRoller, "3F0uQtsLcjbuznDpYdwWW26FSG8=");
+_s(DiceRoller, "LoqKT9XO5sldkwg5TlGLfKy3yQE=");
 _c = DiceRoller;
 const __TURBOPACK__default__export__ = DiceRoller;
 var _c;
@@ -607,4 +643,4 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 }}),
 }]);
 
-//# sourceMappingURL=src_app_010cbc35._.js.map
+//# sourceMappingURL=src_app_b39ecfcc._.js.map

@@ -6,7 +6,7 @@ import DiceRoller from '../components/DiceRoller';
 const Dice: React.FC = () => {
   return (
     <div>
-      <h2>🎲 Dice Game</h2>
+      <h1 className = 'text-center'>🎲 Dice Game</h1>
       <DiceRoller />
     </div>
   );

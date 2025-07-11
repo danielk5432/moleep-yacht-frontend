@@ -1,10 +1,20 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState} from 'react';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import SelectedDiceView from './SelectedDiceView';
 
+type Dice = {
+  id: number;
+  mesh: THREE.Mesh;
+  body: CANNON.Body;
+  selected: boolean;
+  originalPosition: CANNON.Vec3;
+  finalPosition?: THREE.Vector3;
+  finalQuaternion?: THREE.Quaternion;
+};
 
 const DiceRoller: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -15,7 +25,20 @@ const DiceRoller: React.FC = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const diceMeshRef = useRef<THREE.Mesh>(null);
   const physicsWorldRef = useRef<CANNON.World>(null);
-  const diceArrayRef = useRef<{ mesh: THREE.Object3D; body: CANNON.Body }[]>([]);
+  const diceArrayRef = useRef<Dice[]>([]);
+  const [selectedMeshes, setSelectedMeshes] = useState<THREE.Mesh[]>([]);
+  const [selectedDiceMap, setSelectedDiceMap] = useState<Map<string, Dice>>(new Map());
+  const selectedCountRef = useRef(0); // 선택된 주사위 개수 추적
+  const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
+
+
+  const fixedPositions: THREE.Vector3[] = [
+    new THREE.Vector3(6, 0, 0),
+    new THREE.Vector3(6, 0, 2),
+    new THREE.Vector3(6, 0, -2),
+    new THREE.Vector3(6, 0, 4),
+    new THREE.Vector3(6, 0, -4),
+  ];
 
   const params = {
     numberOfDice: 5,
@@ -33,23 +56,23 @@ const DiceRoller: React.FC = () => {
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.shadowMap.enabled = true;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight - 100);
     rendererRef.current = renderer;
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
-    camera.position.set(0, 15, 10);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight - 100), 0.1, 300);
+    camera.position.set(0, 15, 0);
     camera.up.set(0, 0, -1);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 3);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 5);
     scene.add(ambientLight);
 
-    const topLight = new THREE.PointLight(0xffffff, 5);
-    topLight.position.set(10, 15, 0);
+    const topLight = new THREE.PointLight(0xffffff, 3);
+    topLight.position.set(0, 15, 0);
     topLight.castShadow = true;
     topLight.shadow.mapSize.width = 2048;
     topLight.shadow.mapSize.height = 2048;
@@ -115,18 +138,18 @@ const DiceRoller: React.FC = () => {
     ring.position.y = -7 + 0.01; // 살짝 위로
     scene.add(ring);
 
-    function createDiceTextures() {
+    function createDiceTextures(baseColor: string = '#ffffff') {
       const textures : THREE.Texture[] =  [];
       const dotRadius = 10;
-      const size = 128;
+      const size = 100;
 
       const dotPositions = [
         [[1, 1]],
+        [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
         [[0, 0], [2, 2]],
+        [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
         [[0, 0], [1, 1], [2, 2]],
         [[0, 0], [0, 2], [2, 0], [2, 2]],
-        [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
-        [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]]
       ];
 
       for (let i = 0; i < 6; i++) {
@@ -134,7 +157,7 @@ const DiceRoller: React.FC = () => {
         canvas.width = canvas.height = size;
         const ctx = canvas.getContext('2d')!;
 
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = baseColor; // ✅ 배경색
         ctx.fillRect(0, 0, size, size);
 
         ctx.fillStyle = '#000000';
@@ -144,8 +167,8 @@ const DiceRoller: React.FC = () => {
           ctx.arc(spacing * (col + 1), spacing * (row + 1), dotRadius, 0, Math.PI * 2);
           ctx.fill();
         }
-        const texture = new THREE.CanvasTexture(canvas);
-        textures.push(texture);
+
+        textures.push(new THREE.CanvasTexture(canvas));
       }
 
       return textures;
@@ -154,16 +177,16 @@ const DiceRoller: React.FC = () => {
 
     function getTopFaceNumber(quaternion: THREE.Quaternion): number {
       // 주사위의 로컬 Y+ 벡터 (윗면) → 월드 좌표계로 변환
-      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
+      const up = new THREE.Vector3(0, 1, 0);
 
       // 각 면의 노멀과 숫자 매핑
       const faceNormals = [
-        { normal: new THREE.Vector3(1, 0, 0), number: 6 },   // +X → texture[0]
-        { normal: new THREE.Vector3(-1, 0, 0), number: 2 },  // -X → texture[1]
-        { normal: new THREE.Vector3(0, 1, 0), number: 3 },   // +Y → texture[2]
-        { normal: new THREE.Vector3(0, -1, 0), number: 4 },  // -Y → texture[3]
-        { normal: new THREE.Vector3(0, 0, 1), number: 5 },   // +Z → texture[4]
-        { normal: new THREE.Vector3(0, 0, -1), number: 1 }   // -Z → texture[5]
+        { normal: new THREE.Vector3(1, 0, 0), number: 1 },   // +X → texture[0]
+        { normal: new THREE.Vector3(-1, 0, 0), number: 6 },  // -X → texture[1]
+        { normal: new THREE.Vector3(0, 1, 0), number: 2 },   // +Y → texture[2]
+        { normal: new THREE.Vector3(0, -1, 0), number: 5 },  // -Y → texture[3]
+        { normal: new THREE.Vector3(0, 0, 1), number: 3 },   // +Z → texture[4]
+        { normal: new THREE.Vector3(0, 0, -1), number: 4 }   // -Z → texture[5]
       ];
 
       // 가장 유사한 노멀 (코사인 유사도 기반)
@@ -171,7 +194,7 @@ const DiceRoller: React.FC = () => {
       let topNumber = 0;
 
       for (const face of faceNormals) {
-        const dot = up.dot(face.normal);
+        const dot = up.dot(face.normal.applyQuaternion(quaternion));
         if (dot > maxDot) {
           maxDot = dot;
           topNumber = face.number;
@@ -181,7 +204,7 @@ const DiceRoller: React.FC = () => {
       return topNumber;
     }
 
-    const createDiceMesh = () => {
+    const createDiceMesh = (color: string) => {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const textures = createDiceTextures();
 
@@ -190,8 +213,6 @@ const DiceRoller: React.FC = () => {
           map: texture,
           metalness: 0,
           roughness: 0.3,
-          emissive: new THREE.Color(0xffffff),
-          emissiveIntensity: 0.1,
         })
       );
 
@@ -201,20 +222,38 @@ const DiceRoller: React.FC = () => {
     };
 
 
-    const diceMesh = createDiceMesh();
-    diceMeshRef.current = diceMesh;
+
+    const diceColors = ['#ffffff', '#ffdddd', '#ddffdd', '#ddddff', '#ffffdd'];
 
     for (let i = 0; i < params.numberOfDice; i++) {
-      const mesh = diceMesh.clone();
+      const index = i % diceColors.length;
+      const mesh = createDiceMesh(diceColors[index]);
+
       scene.add(mesh);
+
       const body = new CANNON.Body({
         mass: 1,
         shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
         sleepTimeLimit: 0.1,
       });
+
+      const initialPosition = new CANNON.Vec3(6, i * 1.5, 0);
+      body.position.copy(initialPosition);
+      mesh.position.copy(initialPosition);
+
       physicsWorld.addBody(body);
-      diceArrayRef.current.push({ mesh, body });
+
+      diceArrayRef.current.push({
+        id: i,
+        mesh,
+        body,
+        selected: false,
+        originalPosition: initialPosition.clone(),
+        finalPosition: undefined,
+        finalQuaternion: undefined,
+      });
     }
+
     
     let scored = false;
 
@@ -270,15 +309,148 @@ const DiceRoller: React.FC = () => {
 
     throwDice();
     render();
-  }, []);
 
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const onClick = (event: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(
+        [...diceArrayRef.current.map(d => d.mesh), ...selectedMeshRefs.current]
+      );
+
+      if (intersects.length === 0) return;
+
+      const clickedMesh = intersects[0].object as THREE.Mesh;
+
+      // 🎯 복제 메시 클릭 → 복원
+      const matchedMesh = selectedMeshRefs.current.find(m => m.uuid === clickedMesh.uuid);
+
+
+      if (matchedMesh) {
+        console.log("hihi");
+        const originalDice = selectedDiceMap.get(clickedMesh.uuid);
+        
+        if (!originalDice) {
+          console.warn('originalDice not found for uuid:', clickedMesh.uuid);
+          return;
+        }
+
+        // ✅ 복제 메시 제거
+        scene.remove(matchedMesh);
+        selectedMeshRefs.current = selectedMeshRefs.current.filter(m => m.uuid !== matchedMesh.uuid);
+
+        // ✅ 선택 상태 해제
+        originalDice.selected = false;
+
+        // ✅ 위치/회전 복원
+        if (originalDice.finalPosition && originalDice.finalQuaternion) {
+          originalDice.body.position.copy(new CANNON.Vec3(
+            originalDice.finalPosition.x,
+            originalDice.finalPosition.y,
+            originalDice.finalPosition.z
+          ));
+          originalDice.mesh.position.copy(originalDice.finalPosition);
+
+          originalDice.body.quaternion.copy(new CANNON.Quaternion(
+            originalDice.finalQuaternion.x,
+            originalDice.finalQuaternion.y,
+            originalDice.finalQuaternion.z,
+            originalDice.finalQuaternion.w
+          ));
+          originalDice.mesh.quaternion.copy(originalDice.finalQuaternion);
+        }
+
+        // ✅ 물리 속도 제거 및 wakeUp
+        originalDice.body.velocity.setZero();
+        originalDice.body.angularVelocity.setZero();
+        originalDice.body.wakeUp();
+
+        // ✅ 다시 scene에 추가
+        scene.add(originalDice.mesh);
+
+        // ✅ 상태 정리
+        setSelectedMeshes(prev => prev.filter(m => m.uuid !== clickedMesh.uuid));
+        setSelectedDiceMap(prev => {
+          const map = new Map(prev);
+          map.delete(clickedMesh.uuid);
+          return map;
+        });
+
+        selectedCountRef.current -= 1;
+        return;
+      }else console.log("byebye");
+
+
+      // 🎲 원래 주사위 클릭 → 복제 및 이동
+      const diceItem = diceArrayRef.current.find(d => d.mesh === clickedMesh);
+      if (!diceItem || diceItem.selected) return;
+
+      diceItem.selected = true;
+      diceItem.finalPosition = diceItem.mesh.position.clone();
+      diceItem.finalQuaternion = diceItem.mesh.quaternion.clone();
+
+      scene.remove(diceItem.mesh);
+
+      // ✅ 현재 선택된 개수 기준 위치 계산
+      const currentSelectedCount = selectedCountRef.current;
+      const targetPosition = fixedPositions[currentSelectedCount] ?? new THREE.Vector3(8, currentSelectedCount * 1.5, 0);
+
+      const newMesh = diceItem.mesh.clone();
+      newMesh.userData.uuidForMap = newMesh.uuid; 
+      
+      newMesh.userData.originalId = diceItem.id;     // 추적용 커스텀 필드
+      
+      newMesh.position.copy(targetPosition);
+      newMesh.quaternion.copy(diceItem.finalQuaternion);
+      newMesh.castShadow = true;
+      scene.add(newMesh);
+      selectedMeshRefs.current.push(newMesh);
+
+      setSelectedMeshes(prev => [...prev, newMesh]);
+      setSelectedDiceMap(prev => {
+        const map = new Map(prev);
+        map.set(newMesh.userData.uuidForMap, diceItem);
+        return map;
+      });
+
+      selectedCountRef.current += 1; // ✅ 수동 증가
+    };
+
+
+
+
+    canvas.addEventListener('click', onClick);
+    return () => {
+      canvas.removeEventListener('click', onClick);
+    };
+
+  }, []);
   return (
-    <div>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '300px' }} />
-      <div style={{ marginTop: 20, textAlign: 'center' }}>
-        Score: <span ref={scoreRef}></span>
-        <button onClick={() => window.location.reload()} style={{ marginLeft: 10 }}>Throw the Dice</button>
+    <div className="relative w-full h-screen">
+      {/* 시뮬레이터 canvas 전체화면 */}
+      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
+      <div className="absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium">
+        선택된 주사위: {selectedMeshes.length}개
       </div>
+      {/* 점수 및 버튼 (optional) */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-center">
+        
+        <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
+        <button
+          onClick={() => window.location.reload()}
+          className="ml-4 px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600"
+        >
+          Throw the Dice
+        </button>
+      </div>
+
+ 
+      
     </div>
   );
 };
