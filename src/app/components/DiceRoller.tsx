@@ -13,7 +13,7 @@ const DiceRoller: React.FC = () => {
   const rendererRef = useRef<THREE.WebGLRenderer>(null);
   const sceneRef = useRef<THREE.Scene>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
-  const diceMeshRef = useRef<THREE.Group>(null);
+  const diceMeshRef = useRef<THREE.Mesh>(null);
   const physicsWorldRef = useRef<CANNON.World>(null);
   const diceArrayRef = useRef<{ mesh: THREE.Object3D; body: CANNON.Body }[]>([]);
 
@@ -40,13 +40,15 @@ const DiceRoller: React.FC = () => {
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
-    camera.position.set(0, 0.5, 4).multiplyScalar(7);
+    camera.position.set(0, 15, 10);
+    camera.up.set(0, 0, -1);
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 3);
     scene.add(ambientLight);
 
-    const topLight = new THREE.PointLight(0xffffff, 1.2);
+    const topLight = new THREE.PointLight(0xffffff, 5);
     topLight.position.set(10, 15, 0);
     topLight.castShadow = true;
     topLight.shadow.mapSize.width = 2048;
@@ -55,6 +57,7 @@ const DiceRoller: React.FC = () => {
     topLight.shadow.camera.far = 400;
 
     scene.add(topLight);
+    scene.background = new THREE.Color('#f0f0f0');
 
     const physicsWorld = new CANNON.World({
       allowSleep: true,
@@ -64,12 +67,12 @@ const DiceRoller: React.FC = () => {
     physicsWorldRef.current = physicsWorld;
 
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(1000, 1000),
-      new THREE.ShadowMaterial({ opacity: 0.1 })
+      new THREE.CircleGeometry(5, 64),
+      new THREE.MeshStandardMaterial({ color: 0x006600 }) // 초록색 felt 느낌
     );
     floor.receiveShadow = true;
-    floor.position.y = -7;
-    floor.quaternion.setFromAxisAngle(new THREE.Vector3(-1, 0, 0), Math.PI * 0.5);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -7; 
     scene.add(floor);
 
     const floorBody = new CANNON.Body({
@@ -77,63 +80,126 @@ const DiceRoller: React.FC = () => {
       shape: new CANNON.Plane(),
     });
     floorBody.position.copy(floor.position as any);
-    floorBody.quaternion.copy(floor.quaternion as any);
+    floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     physicsWorld.addBody(floorBody);
 
-    const createDiceMesh = () => {
-      const boxMaterialOuter = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
-      const boxMaterialInner = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0,
-        metalness: 1,
-        side: THREE.DoubleSide,
-      });
 
-      const diceMesh = new THREE.Group();
-      const innerMesh = new THREE.Mesh(createInnerGeometry(), boxMaterialInner);
-      const outerMesh = new THREE.Mesh(createBoxGeometry(), boxMaterialOuter);
-      outerMesh.castShadow = true;
-      diceMesh.add(innerMesh, outerMesh);
-      return diceMesh;
-    };
 
-    const createBoxGeometry = (): THREE.BufferGeometry => {
-      let boxGeometry: THREE.BufferGeometry = new THREE.BoxGeometry(1, 1, 1, params.segments, params.segments, params.segments);
-      const positionAttr = boxGeometry.attributes.position;
-      const subCubeHalfSize = 0.5 - params.edgeRadius;
+    const wallRadius = 5;
+    const wallHeight = 2;
+    const wallThickness = 0.3;
 
-      for (let i = 0; i < positionAttr.count; i++) {
-        let position = new THREE.Vector3().fromBufferAttribute(positionAttr, i);
-        const subCube = new THREE.Vector3(Math.sign(position.x), Math.sign(position.y), Math.sign(position.z)).multiplyScalar(subCubeHalfSize);
-        const addition = new THREE.Vector3().subVectors(position, subCube);
+    // 비어 있는 원기둥으로 벽을 생성
+    const wall = new CANNON.Body({ type: CANNON.Body.STATIC });
+    const segments = 32;
 
-        if (Math.abs(position.x) > subCubeHalfSize && Math.abs(position.y) > subCubeHalfSize && Math.abs(position.z) > subCubeHalfSize) {
-          addition.normalize().multiplyScalar(params.edgeRadius);
-          position = subCube.add(addition);
+    for (let i = 0; i < segments; i++) {
+      const theta = (2 * Math.PI * i) / segments;
+      const x = Math.cos(theta) * wallRadius;
+      const z = Math.sin(theta) * wallRadius;
+
+      const box = new CANNON.Box(new CANNON.Vec3(wallThickness / 2, wallHeight / 2, 0.2));
+      const quaternion = new CANNON.Quaternion();
+      quaternion.setFromEuler(0, -theta, 0);
+
+      wall.addShape(box, new CANNON.Vec3(x, wallHeight / 2 - 7, z), quaternion);
+    }
+
+    physicsWorld.addBody(wall);
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(wallRadius - wallThickness, wallRadius + wallThickness, 64),
+      new THREE.MeshStandardMaterial({ color: 0x8b4513, side: THREE.DoubleSide }) // 갈색 나무
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = -7 + 0.01; // 살짝 위로
+    scene.add(ring);
+
+    function createDiceTextures() {
+      const textures : THREE.Texture[] =  [];
+      const dotRadius = 10;
+      const size = 128;
+
+      const dotPositions = [
+        [[1, 1]],
+        [[0, 0], [2, 2]],
+        [[0, 0], [1, 1], [2, 2]],
+        [[0, 0], [0, 2], [2, 0], [2, 2]],
+        [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
+        [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]]
+      ];
+
+      for (let i = 0; i < 6; i++) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+
+        ctx.fillStyle = '#000000';
+        const spacing = size / 4;
+        for (const [row, col] of dotPositions[i]) {
+          ctx.beginPath();
+          ctx.arc(spacing * (col + 1), spacing * (row + 1), dotRadius, 0, Math.PI * 2);
+          ctx.fill();
         }
-
-        positionAttr.setXYZ(i, position.x, position.y, position.z);
+        const texture = new THREE.CanvasTexture(canvas);
+        textures.push(texture);
       }
 
-      boxGeometry.deleteAttribute('normal');
-      boxGeometry.deleteAttribute('uv');
-      boxGeometry = mergeVertices(boxGeometry);
-      boxGeometry.computeVertexNormals();
-      return boxGeometry;
+      return textures;
+    }
+
+
+    function getTopFaceNumber(quaternion: THREE.Quaternion): number {
+      // 주사위의 로컬 Y+ 벡터 (윗면) → 월드 좌표계로 변환
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
+
+      // 각 면의 노멀과 숫자 매핑
+      const faceNormals = [
+        { normal: new THREE.Vector3(1, 0, 0), number: 6 },   // +X → texture[0]
+        { normal: new THREE.Vector3(-1, 0, 0), number: 2 },  // -X → texture[1]
+        { normal: new THREE.Vector3(0, 1, 0), number: 3 },   // +Y → texture[2]
+        { normal: new THREE.Vector3(0, -1, 0), number: 4 },  // -Y → texture[3]
+        { normal: new THREE.Vector3(0, 0, 1), number: 5 },   // +Z → texture[4]
+        { normal: new THREE.Vector3(0, 0, -1), number: 1 }   // -Z → texture[5]
+      ];
+
+      // 가장 유사한 노멀 (코사인 유사도 기반)
+      let maxDot = -Infinity;
+      let topNumber = 0;
+
+      for (const face of faceNormals) {
+        const dot = up.dot(face.normal);
+        if (dot > maxDot) {
+          maxDot = dot;
+          topNumber = face.number;
+        }
+      }
+
+      return topNumber;
+    }
+
+    const createDiceMesh = () => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const textures = createDiceTextures();
+
+      const materials = textures.map(texture =>
+        new THREE.MeshStandardMaterial({
+          map: texture,
+          metalness: 0,
+          roughness: 0.3,
+          emissive: new THREE.Color(0xffffff),
+          emissiveIntensity: 0.1,
+        })
+      );
+
+      const mesh = new THREE.Mesh(geometry, materials);
+      mesh.castShadow = true;
+      return mesh;
     };
 
-    const createInnerGeometry = (): THREE.BufferGeometry => {
-      const baseGeometry = new THREE.PlaneGeometry(1 - 2 * params.edgeRadius, 1 - 2 * params.edgeRadius);
-      const offset = 0.48;
-      return mergeGeometries([
-        baseGeometry.clone().translate(0, 0, offset),
-        baseGeometry.clone().translate(0, 0, -offset),
-        baseGeometry.clone().rotateX(0.5 * Math.PI).translate(0, -offset, 0),
-        baseGeometry.clone().rotateX(0.5 * Math.PI).translate(0, offset, 0),
-        baseGeometry.clone().rotateY(0.5 * Math.PI).translate(-offset, 0, 0),
-        baseGeometry.clone().rotateY(0.5 * Math.PI).translate(offset, 0, 0),
-      ], false);
-    };
 
     const diceMesh = createDiceMesh();
     diceMeshRef.current = diceMesh;
@@ -149,19 +215,34 @@ const DiceRoller: React.FC = () => {
       physicsWorld.addBody(body);
       diceArrayRef.current.push({ mesh, body });
     }
+    
+    let scored = false;
 
     const render = () => {
       physicsWorld.fixedStep();
+
+      let allSleeping = true;
       for (const dice of diceArrayRef.current) {
         dice.mesh.position.copy(dice.body.position);
         dice.mesh.quaternion.copy(dice.body.quaternion);
+
+        if (dice.body.sleepState !== CANNON.Body.SLEEPING) {
+          allSleeping = false;
+        }
       }
+
+      if (allSleeping && !scored) {
+        const scores = diceArrayRef.current.map(d => getTopFaceNumber(d.mesh.quaternion));
+        scoreRef.current!.innerHTML = scores.join(' + ') + ' = ' + scores.reduce((a, b) => a + b, 0);
+        scored = true;
+      }
+
       renderer.render(scene, camera);
       requestAnimationFrame(render);
     };
 
     const throwDice = () => {
-
+      scored = false;
       if (!scoreResult) return;
       scoreResult.innerHTML = '';
       diceArrayRef.current.forEach((d, i) => {
