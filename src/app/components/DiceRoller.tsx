@@ -11,9 +11,11 @@ type Dice = {
   mesh: THREE.Mesh;
   body: CANNON.Body;
   selected: boolean;
-  originalPosition: CANNON.Vec3;
-  finalPosition?: THREE.Vector3;
-  finalQuaternion?: THREE.Quaternion;
+   originalPosition: CANNON.Vec3; // 초기 생성 위치 (던지기 전 위치)
+  // finalPosition, finalQuaternion은 이제 '선택된 위치'가 아닌 '원본이 물리 시뮬레이션에서 멈춘 위치'를 저장하는 용도로 변경
+  // 굳이 필요 없다면 제거 가능하지만, 원본 위치 복원 시점에 유용할 수 있습니다.
+  stoppedPosition?: THREE.Vector3;
+  stoppedQuaternion?: THREE.Quaternion;
 };
 
 const DiceRoller: React.FC = () => {
@@ -27,9 +29,9 @@ const DiceRoller: React.FC = () => {
   const physicsWorldRef = useRef<CANNON.World>(null);
   const diceArrayRef = useRef<Dice[]>([]);
   const [selectedMeshes, setSelectedMeshes] = useState<THREE.Mesh[]>([]);
-  const [selectedDiceMap, setSelectedDiceMap] = useState<Map<string, Dice>>(new Map());
+  const [selectedDiceMap, setSelectedDiceMap] = useState<Map<string, Dice>>(new Map()); // Key: clonedMesh.uuid, Value: original Dice object
   const selectedCountRef = useRef(0); // 선택된 주사위 개수 추적
-  const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
+  const selectedMeshRefs = useRef<THREE.Mesh[]>([]); // This will hold references to the CLONED meshes
 
 
   const fixedPositions: THREE.Vector3[] = [
@@ -95,7 +97,7 @@ const DiceRoller: React.FC = () => {
     );
     floor.receiveShadow = true;
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -7; 
+    floor.position.y = -7;
     scene.add(floor);
 
     const floorBody = new CANNON.Body({
@@ -105,8 +107,6 @@ const DiceRoller: React.FC = () => {
     floorBody.position.copy(floor.position as any);
     floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     physicsWorld.addBody(floorBody);
-
-
 
     const wallRadius = 5;
     const wallHeight = 2;
@@ -144,12 +144,12 @@ const DiceRoller: React.FC = () => {
       const size = 100;
 
       const dotPositions = [
-        [[1, 1]],
-        [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
-        [[0, 0], [2, 2]],
-        [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
-        [[0, 0], [1, 1], [2, 2]],
-        [[0, 0], [0, 2], [2, 0], [2, 2]],
+        [[1, 1]], // 1
+        [[0, 0], [2, 2]], // 2
+        [[0, 0], [1, 1], [2, 2]], // 3
+        [[0, 0], [0, 2], [2, 0], [2, 2]], // 4
+        [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]], // 5
+        [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]], // 6
       ];
 
       for (let i = 0; i < 6; i++) {
@@ -157,7 +157,7 @@ const DiceRoller: React.FC = () => {
         canvas.width = canvas.height = size;
         const ctx = canvas.getContext('2d')!;
 
-        ctx.fillStyle = baseColor; // ✅ 배경색
+        ctx.fillStyle = baseColor;
         ctx.fillRect(0, 0, size, size);
 
         ctx.fillStyle = '#000000';
@@ -176,31 +176,26 @@ const DiceRoller: React.FC = () => {
 
 
     function getTopFaceNumber(quaternion: THREE.Quaternion): number {
-      // 주사위의 로컬 Y+ 벡터 (윗면) → 월드 좌표계로 변환
       const up = new THREE.Vector3(0, 1, 0);
-
-      // 각 면의 노멀과 숫자 매핑
       const faceNormals = [
-        { normal: new THREE.Vector3(1, 0, 0), number: 1 },   // +X → texture[0]
-        { normal: new THREE.Vector3(-1, 0, 0), number: 6 },  // -X → texture[1]
-        { normal: new THREE.Vector3(0, 1, 0), number: 2 },   // +Y → texture[2]
-        { normal: new THREE.Vector3(0, -1, 0), number: 5 },  // -Y → texture[3]
-        { normal: new THREE.Vector3(0, 0, 1), number: 3 },   // +Z → texture[4]
-        { normal: new THREE.Vector3(0, 0, -1), number: 4 }   // -Z → texture[5]
+        { normal: new THREE.Vector3(1, 0, 0), number: 1 },
+        { normal: new THREE.Vector3(-1, 0, 0), number: 6 },
+        { normal: new THREE.Vector3(0, 1, 0), number: 2 },
+        { normal: new THREE.Vector3(0, -1, 0), number: 5 },
+        { normal: new THREE.Vector3(0, 0, 1), number: 3 },
+        { normal: new THREE.Vector3(0, 0, -1), number: 4 }
       ];
 
-      // 가장 유사한 노멀 (코사인 유사도 기반)
       let maxDot = -Infinity;
       let topNumber = 0;
 
       for (const face of faceNormals) {
-        const dot = up.dot(face.normal.applyQuaternion(quaternion));
+        const dot = up.dot(face.normal.clone().applyQuaternion(quaternion)); // Clone to avoid modifying the original normal
         if (dot > maxDot) {
           maxDot = dot;
           topNumber = face.number;
         }
       }
-
       return topNumber;
     }
 
@@ -220,7 +215,6 @@ const DiceRoller: React.FC = () => {
       mesh.castShadow = true;
       return mesh;
     };
-
 
 
     const diceColors = ['#ffffff', '#ffdddd', '#ddffdd', '#ddddff', '#ffffdd'];
@@ -249,12 +243,11 @@ const DiceRoller: React.FC = () => {
         body,
         selected: false,
         originalPosition: initialPosition.clone(),
-        finalPosition: undefined,
-        finalQuaternion: undefined,
+        stoppedPosition: undefined,
+        stoppedQuaternion: undefined,
       });
     }
 
-    
     let scored = false;
 
     const render = () => {
@@ -262,11 +255,14 @@ const DiceRoller: React.FC = () => {
 
       let allSleeping = true;
       for (const dice of diceArrayRef.current) {
-        dice.mesh.position.copy(dice.body.position);
-        dice.mesh.quaternion.copy(dice.body.quaternion);
+        // Only update position/quaternion for dice that are NOT selected
+        if (!dice.selected) {
+          dice.mesh.position.copy(dice.body.position as any);
+          dice.mesh.quaternion.copy(dice.body.quaternion as any);
 
-        if (dice.body.sleepState !== CANNON.Body.SLEEPING) {
-          allSleeping = false;
+          if (dice.body.sleepState !== CANNON.Body.SLEEPING) {
+            allSleeping = false;
+          }
         }
       }
 
@@ -284,20 +280,49 @@ const DiceRoller: React.FC = () => {
       scored = false;
       if (!scoreResult) return;
       scoreResult.innerHTML = '';
+
+      // Clear all selected dice and put them back into play before throwing
+      selectedMeshRefs.current.forEach(clonedMesh => {
+        const originalDice = selectedDiceMap.get(clonedMesh.uuid);
+        if (originalDice) {
+          // Remove the cloned mesh from the scene
+          scene.remove(clonedMesh);
+          // Re-add the original mesh to the scene
+          scene.add(originalDice.mesh);
+          // Mark as not selected
+          originalDice.selected = false;
+          // Reset its physics state
+          originalDice.body.velocity.setZero();
+          originalDice.body.angularVelocity.setZero();
+          originalDice.body.position.copy(originalDice.originalPosition);
+          originalDice.body.quaternion.set(0, 0, 0, 1); // Reset quaternion
+          originalDice.mesh.position.copy(originalDice.originalPosition);
+          originalDice.mesh.quaternion.identity(); // Reset quaternion
+          originalDice.body.wakeUp();
+        }
+      });
+      setSelectedMeshes([]);
+      setSelectedDiceMap(new Map());
+      selectedMeshRefs.current = [];
+      selectedCountRef.current = 0;
+
+
       diceArrayRef.current.forEach((d, i) => {
-        d.body.velocity.setZero();
-        d.body.angularVelocity.setZero();
-        d.body.position = new CANNON.Vec3(6, i * 1.5, 0);
-        d.mesh.position.copy(d.body.position);
-        d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+        // Ensure only unselected dice are thrown
+        if (!d.selected) {
+          d.body.velocity.setZero();
+          d.body.angularVelocity.setZero();
+          d.body.position.copy(d.originalPosition); // Use original position for reset
+          d.mesh.position.copy(d.body.position as any);
+          d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
 
-        // ✅ three.js quaternion → cannon-es quaternion 변환
-        const threeQuat = d.mesh.quaternion;
-        d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
+          const threeQuat = d.mesh.quaternion;
+          d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
 
-        const force = 3 + 5 * Math.random();
-        d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
-        d.body.allowSleep = true;
+          const force = 3 + 5 * Math.random();
+          d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
+          d.body.allowSleep = true;
+        }
       });
     };
 
@@ -314,115 +339,118 @@ const DiceRoller: React.FC = () => {
     const mouse = new THREE.Vector2();
 
     const onClick = (event: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
+      if (!canvasRef.current || !cameraRef.current || !physicsWorldRef.current) return;
+
+      const rect = canvasRef.current.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-      raycaster.setFromCamera(mouse, camera);
+      raycaster.setFromCamera(mouse, cameraRef.current);
+
+      // 모든 주사위 (선택 여부 관계없이)에 대해 교차 검사
       const intersects = raycaster.intersectObjects(
-        [...diceArrayRef.current.map(d => d.mesh), ...selectedMeshRefs.current]
+        diceArrayRef.current.map(d => d.mesh),
+        true
       );
 
       if (intersects.length === 0) return;
 
       const clickedMesh = intersects[0].object as THREE.Mesh;
 
-      // 🎯 복제 메시 클릭 → 복원
-      const matchedMesh = selectedMeshRefs.current.find(m => m.uuid === clickedMesh.uuid);
+      // 클릭된 메시가 어떤 Dice 객체에 해당하는지 찾음
+      const clickedDice = diceArrayRef.current.find(d => d.mesh === clickedMesh);
 
+      if (!clickedDice) return; // 클릭된 메시가 주사위가 아니면 리턴
 
-      if (matchedMesh) {
-        console.log("hihi");
-        const originalDice = selectedDiceMap.get(clickedMesh.uuid);
-        
-        if (!originalDice) {
-          console.warn('originalDice not found for uuid:', clickedMesh.uuid);
+      if (clickedDice.selected) {
+        // 🎯 이미 선택된 주사위를 다시 클릭 → 원래 상태로 복원
+        console.log("Clicked on an already selected dice. Restoring it.");
+
+        clickedDice.selected = false;
+
+        // 물리 바디를 다시 활성화 (DYNAMIC)
+        clickedDice.body.type = CANNON.Body.DYNAMIC;
+        clickedDice.body.allowSleep = true;
+        clickedDice.body.velocity.setZero();
+        clickedDice.body.angularVelocity.setZero();
+
+        // 저장해 둔 물리 시뮬레이션이 멈춘 위치/회전으로 복원
+        if (clickedDice.stoppedPosition && clickedDice.stoppedQuaternion) {
+            clickedDice.body.position.copy(new CANNON.Vec3(
+                clickedDice.stoppedPosition.x,
+                clickedDice.stoppedPosition.y,
+                clickedDice.stoppedPosition.z
+            ));
+            clickedDice.body.quaternion.copy(new CANNON.Quaternion(
+                clickedDice.stoppedQuaternion.x,
+                clickedDice.stoppedQuaternion.y,
+                clickedDice.stoppedQuaternion.z,
+                clickedDice.stoppedQuaternion.w
+            ));
+        } else {
+            // stoppedPosition이 없으면 초기 originalPosition으로 복원 (안전 장치)
+            clickedDice.body.position.copy(clickedDice.originalPosition);
+            clickedDice.body.quaternion.set(0, 0, 0, 1);
+        }
+
+        clickedDice.mesh.position.copy(clickedDice.body.position as any);
+        clickedDice.mesh.quaternion.copy(clickedDice.body.quaternion as any);
+        clickedDice.body.wakeUp(); // 물리 시뮬레이션에 참여하도록 깨우기
+
+        setSelectedMeshes(prev => prev.filter(m => m.uuid !== clickedDice.mesh.uuid));
+        setSelectedDiceMap(prev => {
+          const map = new Map(prev);
+          map.delete(clickedDice.mesh.uuid);
+          return map;
+        });
+        selectedCountRef.current -= 1;
+
+      } else {
+        // 🎲 선택되지 않은 주사위를 클릭 → 선택된 위치로 이동
+        console.log("Clicked on an unselected dice. Selecting it.");
+
+        // 주사위가 멈춰있을 때만 선택 가능하도록 (선택 시점의 최종 위치 저장)
+        if (clickedDice.body.sleepState !== CANNON.Body.SLEEPING) {
+          console.log("Dice is still moving, cannot select.");
           return;
         }
 
-        // ✅ 복제 메시 제거
-        scene.remove(matchedMesh);
-        selectedMeshRefs.current = selectedMeshRefs.current.filter(m => m.uuid !== matchedMesh.uuid);
+        clickedDice.selected = true;
+        clickedDice.stoppedPosition = clickedDice.mesh.position.clone(); // 물리 시뮬레이션이 멈춘 위치 저장
+        clickedDice.stoppedQuaternion = clickedDice.mesh.quaternion.clone(); // 물리 시뮬레이션이 멈춘 회전 저장
 
-        // ✅ 선택 상태 해제
-        originalDice.selected = false;
+        // 물리 바디를 STATIC으로 변경하여 물리 시뮬레이션의 영향을 받지 않도록 함
+        clickedDice.body.type = CANNON.Body.STATIC;
+        clickedDice.body.allowSleep = false; // 더 이상 슬립 상태가 되면 안됨
 
-        // ✅ 위치/회전 복원
-        if (originalDice.finalPosition && originalDice.finalQuaternion) {
-          originalDice.body.position.copy(new CANNON.Vec3(
-            originalDice.finalPosition.x,
-            originalDice.finalPosition.y,
-            originalDice.finalPosition.z
-          ));
-          originalDice.mesh.position.copy(originalDice.finalPosition);
+        // 화면상에서 주사위를 고정된 위치로 직접 이동
+        const currentSelectedCount = selectedCountRef.current;
+        const targetPosition = fixedPositions[currentSelectedCount] ?? new THREE.Vector3(8, currentSelectedCount * 1.5, 0);
 
-          originalDice.body.quaternion.copy(new CANNON.Quaternion(
-            originalDice.finalQuaternion.x,
-            originalDice.finalQuaternion.y,
-            originalDice.finalQuaternion.z,
-            originalDice.finalQuaternion.w
-          ));
-          originalDice.mesh.quaternion.copy(originalDice.finalQuaternion);
-        }
+        clickedDice.mesh.position.copy(targetPosition);
+        // 회전은 유지하거나 필요하면 특정 각도로 고정
+        // clickedDice.mesh.quaternion.identity(); // 예: 선택 시 정렬하고 싶다면
 
-        // ✅ 물리 속도 제거 및 wakeUp
-        originalDice.body.velocity.setZero();
-        originalDice.body.angularVelocity.setZero();
-        originalDice.body.wakeUp();
+        // 물리 바디의 위치도 해당 위치로 직접 설정
+        clickedDice.body.position.copy(new CANNON.Vec3(targetPosition.x, targetPosition.y, targetPosition.z));
+        // 물리 바디의 회전도 메시와 동기화
+        clickedDice.body.quaternion.copy(new CANNON.Quaternion(
+            clickedDice.mesh.quaternion.x,
+            clickedDice.mesh.quaternion.y,
+            clickedDice.mesh.quaternion.z,
+            clickedDice.mesh.quaternion.w
+        ));
 
-        // ✅ 다시 scene에 추가
-        scene.add(originalDice.mesh);
 
-        // ✅ 상태 정리
-        setSelectedMeshes(prev => prev.filter(m => m.uuid !== clickedMesh.uuid));
+        setSelectedMeshes(prev => [...prev, clickedDice.mesh]);
         setSelectedDiceMap(prev => {
           const map = new Map(prev);
-          map.delete(clickedMesh.uuid);
+          map.set(clickedDice.mesh.uuid, clickedDice);
           return map;
         });
-
-        selectedCountRef.current -= 1;
-        return;
-      }else console.log("byebye");
-
-
-      // 🎲 원래 주사위 클릭 → 복제 및 이동
-      const diceItem = diceArrayRef.current.find(d => d.mesh === clickedMesh);
-      if (!diceItem || diceItem.selected) return;
-
-      diceItem.selected = true;
-      diceItem.finalPosition = diceItem.mesh.position.clone();
-      diceItem.finalQuaternion = diceItem.mesh.quaternion.clone();
-
-      scene.remove(diceItem.mesh);
-
-      // ✅ 현재 선택된 개수 기준 위치 계산
-      const currentSelectedCount = selectedCountRef.current;
-      const targetPosition = fixedPositions[currentSelectedCount] ?? new THREE.Vector3(8, currentSelectedCount * 1.5, 0);
-
-      const newMesh = diceItem.mesh.clone();
-      newMesh.userData.uuidForMap = newMesh.uuid; 
-      
-      newMesh.userData.originalId = diceItem.id;     // 추적용 커스텀 필드
-      
-      newMesh.position.copy(targetPosition);
-      newMesh.quaternion.copy(diceItem.finalQuaternion);
-      newMesh.castShadow = true;
-      scene.add(newMesh);
-      selectedMeshRefs.current.push(newMesh);
-
-      setSelectedMeshes(prev => [...prev, newMesh]);
-      setSelectedDiceMap(prev => {
-        const map = new Map(prev);
-        map.set(newMesh.userData.uuidForMap, diceItem);
-        return map;
-      });
-
-      selectedCountRef.current += 1; // ✅ 수동 증가
+        selectedCountRef.current += 1;
+      }
     };
-
-
-
 
     canvas.addEventListener('click', onClick);
     return () => {
@@ -430,27 +458,22 @@ const DiceRoller: React.FC = () => {
     };
 
   }, []);
+
   return (
     <div className="relative w-full h-screen">
-      {/* 시뮬레이터 canvas 전체화면 */}
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
       <div className="absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium">
-        선택된 주사위: {selectedMeshes.length}개
+        Selected Dice: {selectedMeshes.length}
       </div>
-      {/* 점수 및 버튼 (optional) */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-center">
-        
         <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => window.location.reload()} // Changed to reload for simplicity for now
           className="ml-4 px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600"
         >
           Throw the Dice
         </button>
       </div>
-
- 
-      
     </div>
   );
 };

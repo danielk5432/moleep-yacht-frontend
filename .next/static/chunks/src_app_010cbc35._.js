@@ -30,9 +30,9 @@ const DiceRoller = ()=>{
     const physicsWorldRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     const diceArrayRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])([]);
     const [selectedMeshes, setSelectedMeshes] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
-    const [selectedDiceMap, setSelectedDiceMap] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(new Map());
+    const [selectedDiceMap, setSelectedDiceMap] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(new Map()); // Key: clonedMesh.uuid, Value: original Dice object
     const selectedCountRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(0); // 선택된 주사위 개수 추적
-    const selectedMeshRefs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])([]);
+    const selectedMeshRefs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])([]); // This will hold references to the CLONED meshes
     const fixedPositions = [
         new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](6, 0, 0),
         new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](6, 0, 2),
@@ -143,20 +143,18 @@ const DiceRoller = ()=>{
                             0
                         ],
                         [
-                            0,
-                            2
-                        ],
-                        [
-                            1,
-                            0
-                        ],
-                        [
-                            1,
-                            2
-                        ],
-                        [
                             2,
+                            2
+                        ]
+                    ],
+                    [
+                        [
+                            0,
                             0
+                        ],
+                        [
+                            1,
+                            1
                         ],
                         [
                             2,
@@ -166,6 +164,14 @@ const DiceRoller = ()=>{
                     [
                         [
                             0,
+                            0
+                        ],
+                        [
+                            0,
+                            2
+                        ],
+                        [
+                            2,
                             0
                         ],
                         [
@@ -201,21 +207,15 @@ const DiceRoller = ()=>{
                             0
                         ],
                         [
-                            1,
-                            1
+                            0,
+                            2
                         ],
                         [
-                            2,
-                            2
-                        ]
-                    ],
-                    [
-                        [
-                            0,
+                            1,
                             0
                         ],
                         [
-                            0,
+                            1,
                             2
                         ],
                         [
@@ -232,7 +232,7 @@ const DiceRoller = ()=>{
                     const canvas = document.createElement('canvas');
                     canvas.width = canvas.height = size;
                     const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = baseColor; // ✅ 배경색
+                    ctx.fillStyle = baseColor;
                     ctx.fillRect(0, 0, size, size);
                     ctx.fillStyle = '#000000';
                     const spacing = size / 4;
@@ -246,9 +246,7 @@ const DiceRoller = ()=>{
                 return textures;
             }
             function getTopFaceNumber(quaternion) {
-                // 주사위의 로컬 Y+ 벡터 (윗면) → 월드 좌표계로 변환
                 const up = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](0, 1, 0);
-                // 각 면의 노멀과 숫자 매핑
                 const faceNormals = [
                     {
                         normal: new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](1, 0, 0),
@@ -273,13 +271,12 @@ const DiceRoller = ()=>{
                     {
                         normal: new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](0, 0, -1),
                         number: 4
-                    } // -Z → texture[5]
+                    }
                 ];
-                // 가장 유사한 노멀 (코사인 유사도 기반)
                 let maxDot = -Infinity;
                 let topNumber = 0;
                 for (const face of faceNormals){
-                    const dot = up.dot(face.normal.applyQuaternion(quaternion));
+                    const dot = up.dot(face.normal.clone().applyQuaternion(quaternion)); // Clone to avoid modifying the original normal
                     if (dot > maxDot) {
                         maxDot = dot;
                         topNumber = face.number;
@@ -329,8 +326,8 @@ const DiceRoller = ()=>{
                     body,
                     selected: false,
                     originalPosition: initialPosition.clone(),
-                    finalPosition: undefined,
-                    finalQuaternion: undefined
+                    stoppedPosition: undefined,
+                    stoppedQuaternion: undefined
                 });
             }
             let scored = false;
@@ -339,10 +336,13 @@ const DiceRoller = ()=>{
                     physicsWorld.fixedStep();
                     let allSleeping = true;
                     for (const dice of diceArrayRef.current){
-                        dice.mesh.position.copy(dice.body.position);
-                        dice.mesh.quaternion.copy(dice.body.quaternion);
-                        if (dice.body.sleepState !== __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Body"].SLEEPING) {
-                            allSleeping = false;
+                        // Only update position/quaternion for dice that are NOT selected
+                        if (!dice.selected) {
+                            dice.mesh.position.copy(dice.body.position);
+                            dice.mesh.quaternion.copy(dice.body.quaternion);
+                            if (dice.body.sleepState !== __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Body"].SLEEPING) {
+                                allSleeping = false;
+                            }
                         }
                     }
                     if (allSleeping && !scored) {
@@ -363,19 +363,47 @@ const DiceRoller = ()=>{
                     scored = false;
                     if (!scoreResult) return;
                     scoreResult.innerHTML = '';
+                    // Clear all selected dice and put them back into play before throwing
+                    selectedMeshRefs.current.forEach({
+                        "DiceRoller.useEffect.throwDice": (clonedMesh)=>{
+                            const originalDice = selectedDiceMap.get(clonedMesh.uuid);
+                            if (originalDice) {
+                                // Remove the cloned mesh from the scene
+                                scene.remove(clonedMesh);
+                                // Re-add the original mesh to the scene
+                                scene.add(originalDice.mesh);
+                                // Mark as not selected
+                                originalDice.selected = false;
+                                // Reset its physics state
+                                originalDice.body.velocity.setZero();
+                                originalDice.body.angularVelocity.setZero();
+                                originalDice.body.position.copy(originalDice.originalPosition);
+                                originalDice.body.quaternion.set(0, 0, 0, 1); // Reset quaternion
+                                originalDice.mesh.position.copy(originalDice.originalPosition);
+                                originalDice.mesh.quaternion.identity(); // Reset quaternion
+                                originalDice.body.wakeUp();
+                            }
+                        }
+                    }["DiceRoller.useEffect.throwDice"]);
+                    setSelectedMeshes([]);
+                    setSelectedDiceMap(new Map());
+                    selectedMeshRefs.current = [];
+                    selectedCountRef.current = 0;
                     diceArrayRef.current.forEach({
                         "DiceRoller.useEffect.throwDice": (d, i)=>{
-                            d.body.velocity.setZero();
-                            d.body.angularVelocity.setZero();
-                            d.body.position = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](6, i * 1.5, 0);
-                            d.mesh.position.copy(d.body.position);
-                            d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
-                            // ✅ three.js quaternion → cannon-es quaternion 변환
-                            const threeQuat = d.mesh.quaternion;
-                            d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
-                            const force = 3 + 5 * Math.random();
-                            d.body.applyImpulse(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](-force, force, 0), new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](0, 0, 0.2));
-                            d.body.allowSleep = true;
+                            // Ensure only unselected dice are thrown
+                            if (!d.selected) {
+                                d.body.velocity.setZero();
+                                d.body.angularVelocity.setZero();
+                                d.body.position.copy(d.originalPosition); // Use original position for reset
+                                d.mesh.position.copy(d.body.position);
+                                d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+                                const threeQuat = d.mesh.quaternion;
+                                d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
+                                const force = 3 + 5 * Math.random();
+                                d.body.applyImpulse(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](-force, force, 0), new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](0, 0, 0.2));
+                                d.body.allowSleep = true;
+                            }
                         }
                     }["DiceRoller.useEffect.throwDice"]);
                 }
@@ -393,99 +421,95 @@ const DiceRoller = ()=>{
             const mouse = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector2"]();
             const onClick = {
                 "DiceRoller.useEffect.onClick": (event)=>{
-                    const rect = canvas.getBoundingClientRect();
+                    if (!canvasRef.current || !cameraRef.current || !physicsWorldRef.current) return;
+                    const rect = canvasRef.current.getBoundingClientRect();
                     mouse.x = (event.clientX - rect.left) / rect.width * 2 - 1;
                     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-                    raycaster.setFromCamera(mouse, camera);
-                    const intersects = raycaster.intersectObjects([
-                        ...diceArrayRef.current.map({
-                            "DiceRoller.useEffect.onClick.intersects": (d)=>d.mesh
-                        }["DiceRoller.useEffect.onClick.intersects"]),
-                        ...selectedMeshRefs.current
-                    ]);
+                    raycaster.setFromCamera(mouse, cameraRef.current);
+                    // 모든 주사위 (선택 여부 관계없이)에 대해 교차 검사
+                    const intersects = raycaster.intersectObjects(diceArrayRef.current.map({
+                        "DiceRoller.useEffect.onClick.intersects": (d)=>d.mesh
+                    }["DiceRoller.useEffect.onClick.intersects"]), true);
                     if (intersects.length === 0) return;
                     const clickedMesh = intersects[0].object;
-                    // 🎯 복제 메시 클릭 → 복원
-                    const matchedMesh = selectedMeshRefs.current.find({
-                        "DiceRoller.useEffect.onClick.matchedMesh": (m)=>m.uuid === clickedMesh.uuid
-                    }["DiceRoller.useEffect.onClick.matchedMesh"]);
-                    if (matchedMesh) {
-                        console.log("hihi");
-                        const originalDice = selectedDiceMap.get(clickedMesh.uuid);
-                        if (!originalDice) {
-                            console.warn('originalDice not found for uuid:', clickedMesh.uuid);
-                            return;
+                    // 클릭된 메시가 어떤 Dice 객체에 해당하는지 찾음
+                    const clickedDice = diceArrayRef.current.find({
+                        "DiceRoller.useEffect.onClick.clickedDice": (d)=>d.mesh === clickedMesh
+                    }["DiceRoller.useEffect.onClick.clickedDice"]);
+                    if (!clickedDice) return; // 클릭된 메시가 주사위가 아니면 리턴
+                    if (clickedDice.selected) {
+                        // 🎯 이미 선택된 주사위를 다시 클릭 → 원래 상태로 복원
+                        console.log("Clicked on an already selected dice. Restoring it.");
+                        clickedDice.selected = false;
+                        // 물리 바디를 다시 활성화 (DYNAMIC)
+                        clickedDice.body.type = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Body"].DYNAMIC;
+                        clickedDice.body.allowSleep = true;
+                        clickedDice.body.velocity.setZero();
+                        clickedDice.body.angularVelocity.setZero();
+                        // 저장해 둔 물리 시뮬레이션이 멈춘 위치/회전으로 복원
+                        if (clickedDice.stoppedPosition && clickedDice.stoppedQuaternion) {
+                            clickedDice.body.position.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](clickedDice.stoppedPosition.x, clickedDice.stoppedPosition.y, clickedDice.stoppedPosition.z));
+                            clickedDice.body.quaternion.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Quaternion"](clickedDice.stoppedQuaternion.x, clickedDice.stoppedQuaternion.y, clickedDice.stoppedQuaternion.z, clickedDice.stoppedQuaternion.w));
+                        } else {
+                            // stoppedPosition이 없으면 초기 originalPosition으로 복원 (안전 장치)
+                            clickedDice.body.position.copy(clickedDice.originalPosition);
+                            clickedDice.body.quaternion.set(0, 0, 0, 1);
                         }
-                        // ✅ 복제 메시 제거
-                        scene.remove(matchedMesh);
-                        selectedMeshRefs.current = selectedMeshRefs.current.filter({
-                            "DiceRoller.useEffect.onClick": (m)=>m.uuid !== matchedMesh.uuid
-                        }["DiceRoller.useEffect.onClick"]);
-                        // ✅ 선택 상태 해제
-                        originalDice.selected = false;
-                        // ✅ 위치/회전 복원
-                        if (originalDice.finalPosition && originalDice.finalQuaternion) {
-                            originalDice.body.position.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](originalDice.finalPosition.x, originalDice.finalPosition.y, originalDice.finalPosition.z));
-                            originalDice.mesh.position.copy(originalDice.finalPosition);
-                            originalDice.body.quaternion.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Quaternion"](originalDice.finalQuaternion.x, originalDice.finalQuaternion.y, originalDice.finalQuaternion.z, originalDice.finalQuaternion.w));
-                            originalDice.mesh.quaternion.copy(originalDice.finalQuaternion);
-                        }
-                        // ✅ 물리 속도 제거 및 wakeUp
-                        originalDice.body.velocity.setZero();
-                        originalDice.body.angularVelocity.setZero();
-                        originalDice.body.wakeUp();
-                        // ✅ 다시 scene에 추가
-                        scene.add(originalDice.mesh);
-                        // ✅ 상태 정리
+                        clickedDice.mesh.position.copy(clickedDice.body.position);
+                        clickedDice.mesh.quaternion.copy(clickedDice.body.quaternion);
+                        clickedDice.body.wakeUp(); // 물리 시뮬레이션에 참여하도록 깨우기
                         setSelectedMeshes({
                             "DiceRoller.useEffect.onClick": (prev)=>prev.filter({
-                                    "DiceRoller.useEffect.onClick": (m)=>m.uuid !== clickedMesh.uuid
+                                    "DiceRoller.useEffect.onClick": (m)=>m.uuid !== clickedDice.mesh.uuid
                                 }["DiceRoller.useEffect.onClick"])
                         }["DiceRoller.useEffect.onClick"]);
                         setSelectedDiceMap({
                             "DiceRoller.useEffect.onClick": (prev)=>{
                                 const map = new Map(prev);
-                                map.delete(clickedMesh.uuid);
+                                map.delete(clickedDice.mesh.uuid);
                                 return map;
                             }
                         }["DiceRoller.useEffect.onClick"]);
                         selectedCountRef.current -= 1;
-                        return;
-                    } else console.log("byebye");
-                    // 🎲 원래 주사위 클릭 → 복제 및 이동
-                    const diceItem = diceArrayRef.current.find({
-                        "DiceRoller.useEffect.onClick.diceItem": (d)=>d.mesh === clickedMesh
-                    }["DiceRoller.useEffect.onClick.diceItem"]);
-                    if (!diceItem || diceItem.selected) return;
-                    diceItem.selected = true;
-                    diceItem.finalPosition = diceItem.mesh.position.clone();
-                    diceItem.finalQuaternion = diceItem.mesh.quaternion.clone();
-                    scene.remove(diceItem.mesh);
-                    // ✅ 현재 선택된 개수 기준 위치 계산
-                    const currentSelectedCount = selectedCountRef.current;
-                    const targetPosition = fixedPositions[currentSelectedCount] ?? new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, currentSelectedCount * 1.5, 0);
-                    const newMesh = diceItem.mesh.clone();
-                    newMesh.userData.uuidForMap = newMesh.uuid;
-                    newMesh.userData.originalId = diceItem.id; // 추적용 커스텀 필드
-                    newMesh.position.copy(targetPosition);
-                    newMesh.quaternion.copy(diceItem.finalQuaternion);
-                    newMesh.castShadow = true;
-                    scene.add(newMesh);
-                    selectedMeshRefs.current.push(newMesh);
-                    setSelectedMeshes({
-                        "DiceRoller.useEffect.onClick": (prev)=>[
-                                ...prev,
-                                newMesh
-                            ]
-                    }["DiceRoller.useEffect.onClick"]);
-                    setSelectedDiceMap({
-                        "DiceRoller.useEffect.onClick": (prev)=>{
-                            const map = new Map(prev);
-                            map.set(newMesh.userData.uuidForMap, diceItem);
-                            return map;
+                    } else {
+                        // 🎲 선택되지 않은 주사위를 클릭 → 선택된 위치로 이동
+                        console.log("Clicked on an unselected dice. Selecting it.");
+                        // 주사위가 멈춰있을 때만 선택 가능하도록 (선택 시점의 최종 위치 저장)
+                        if (clickedDice.body.sleepState !== __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Body"].SLEEPING) {
+                            console.log("Dice is still moving, cannot select.");
+                            return;
                         }
-                    }["DiceRoller.useEffect.onClick"]);
-                    selectedCountRef.current += 1; // ✅ 수동 증가
+                        clickedDice.selected = true;
+                        clickedDice.stoppedPosition = clickedDice.mesh.position.clone(); // 물리 시뮬레이션이 멈춘 위치 저장
+                        clickedDice.stoppedQuaternion = clickedDice.mesh.quaternion.clone(); // 물리 시뮬레이션이 멈춘 회전 저장
+                        // 물리 바디를 STATIC으로 변경하여 물리 시뮬레이션의 영향을 받지 않도록 함
+                        clickedDice.body.type = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Body"].STATIC;
+                        clickedDice.body.allowSleep = false; // 더 이상 슬립 상태가 되면 안됨
+                        // 화면상에서 주사위를 고정된 위치로 직접 이동
+                        const currentSelectedCount = selectedCountRef.current;
+                        const targetPosition = fixedPositions[currentSelectedCount] ?? new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$three$2f$build$2f$three$2e$core$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"](8, currentSelectedCount * 1.5, 0);
+                        clickedDice.mesh.position.copy(targetPosition);
+                        // 회전은 유지하거나 필요하면 특정 각도로 고정
+                        // clickedDice.mesh.quaternion.identity(); // 예: 선택 시 정렬하고 싶다면
+                        // 물리 바디의 위치도 해당 위치로 직접 설정
+                        clickedDice.body.position.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vec3"](targetPosition.x, targetPosition.y, targetPosition.z));
+                        // 물리 바디의 회전도 메시와 동기화
+                        clickedDice.body.quaternion.copy(new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$cannon$2d$es$2f$dist$2f$cannon$2d$es$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Quaternion"](clickedDice.mesh.quaternion.x, clickedDice.mesh.quaternion.y, clickedDice.mesh.quaternion.z, clickedDice.mesh.quaternion.w));
+                        setSelectedMeshes({
+                            "DiceRoller.useEffect.onClick": (prev)=>[
+                                    ...prev,
+                                    clickedDice.mesh
+                                ]
+                        }["DiceRoller.useEffect.onClick"]);
+                        setSelectedDiceMap({
+                            "DiceRoller.useEffect.onClick": (prev)=>{
+                                const map = new Map(prev);
+                                map.set(clickedDice.mesh.uuid, clickedDice);
+                                return map;
+                            }
+                        }["DiceRoller.useEffect.onClick"]);
+                        selectedCountRef.current += 1;
+                    }
                 }
             }["DiceRoller.useEffect.onClick"];
             canvas.addEventListener('click', onClick);
@@ -504,19 +528,18 @@ const DiceRoller = ()=>{
                 className: "absolute top-0 left-0 w-full h-full z-0"
             }, void 0, false, {
                 fileName: "[project]/src/app/components/DiceRoller.tsx",
-                lineNumber: 436,
+                lineNumber: 464,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium",
                 children: [
-                    "선택된 주사위: ",
-                    selectedMeshes.length,
-                    "개"
+                    "Selected Dice: ",
+                    selectedMeshes.length
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/components/DiceRoller.tsx",
-                lineNumber: 437,
+                lineNumber: 465,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -527,7 +550,7 @@ const DiceRoller = ()=>{
                         className: "text-lg font-semibold bg-white px-4 py-2 rounded shadow"
                     }, void 0, false, {
                         fileName: "[project]/src/app/components/DiceRoller.tsx",
-                        lineNumber: 443,
+                        lineNumber: 469,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -536,19 +559,19 @@ const DiceRoller = ()=>{
                         children: "Throw the Dice"
                     }, void 0, false, {
                         fileName: "[project]/src/app/components/DiceRoller.tsx",
-                        lineNumber: 444,
+                        lineNumber: 470,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/components/DiceRoller.tsx",
-                lineNumber: 441,
+                lineNumber: 468,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/components/DiceRoller.tsx",
-        lineNumber: 434,
+        lineNumber: 463,
         columnNumber: 5
     }, this);
 };
