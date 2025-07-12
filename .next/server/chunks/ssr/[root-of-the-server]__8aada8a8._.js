@@ -280,6 +280,122 @@ function getTopFaceNumber(quaternion) {
 }
 __turbopack_async_result__();
 } catch(e) { __turbopack_async_result__(e); } }, false);}),
+"[project]/src/utils/calculateScores.ts [ssr] (ecmascript)": ((__turbopack_context__) => {
+"use strict";
+
+var { g: global, __dirname } = __turbopack_context__;
+{
+// utils/calculateYachtScores.ts
+__turbopack_context__.s({
+    "calculateScores": (()=>calculateScores)
+});
+function calculateScores(dice) {
+    //if (dice.length !== 5) throw new Error("Exactly 5 dice values required.");
+    const counts = new Map();
+    dice.forEach((d)=>counts.set(d, (counts.get(d) || 0) + 1));
+    const values = Array.from(counts.values());
+    const unique = Array.from(new Set(dice)).sort((a, b)=>a - b);
+    const sum = dice.reduce((a, b)=>a + b, 0);
+    const scores = {
+        Ones: dice.filter((d)=>d === 1).reduce((a, b)=>a + b, 0),
+        Twos: dice.filter((d)=>d === 2).reduce((a, b)=>a + b, 0),
+        Threes: dice.filter((d)=>d === 3).reduce((a, b)=>a + b, 0),
+        Fours: dice.filter((d)=>d === 4).reduce((a, b)=>a + b, 0),
+        Fives: dice.filter((d)=>d === 5).reduce((a, b)=>a + b, 0),
+        Sixes: dice.filter((d)=>d === 6).reduce((a, b)=>a + b, 0),
+        Choice: sum,
+        "Four of a Kind": [
+            ...counts.entries()
+        ].find(([_, c])=>c >= 4)?.[0] * 4 || 0,
+        "Full House": values.includes(3) && values.includes(2) ? sum : 0,
+        "Little Straight": JSON.stringify(unique) === JSON.stringify([
+            1,
+            2,
+            3,
+            4,
+            5
+        ]) ? 20 : 0,
+        "Big Straight": JSON.stringify(unique) === JSON.stringify([
+            2,
+            3,
+            4,
+            5,
+            6
+        ]) ? 30 : 0,
+        Yacht: values.includes(5) ? 50 : 0
+    };
+    return scores;
+}
+}}),
+"[project]/src/components/ScoreTable.tsx [ssr] (ecmascript)": ((__turbopack_context__) => {
+"use strict";
+
+var { g: global, __dirname } = __turbopack_context__;
+{
+// components/ScoreTable.tsx
+__turbopack_context__.s({
+    "default": (()=>__TURBOPACK__default__export__)
+});
+var __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/react/jsx-dev-runtime [external] (react/jsx-dev-runtime, cjs)");
+var __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/react [external] (react, cjs)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$calculateScores$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/utils/calculateScores.ts [ssr] (ecmascript)");
+'use client';
+;
+;
+;
+const ScoreTable = ({ dice })=>{
+    const scores = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$calculateScores$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__["calculateScores"])(dice);
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
+        className: "max-w-md mx-auto bg-white rounded-xl shadow-md p-4",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("h2", {
+                className: "text-xl font-semibold mb-4",
+                children: "🎲 Yacht Dice 점수표"
+            }, void 0, false, {
+                fileName: "[project]/src/components/ScoreTable.tsx",
+                lineNumber: 16,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
+                className: "grid grid-cols-2 gap-2 text-sm",
+                children: Object.entries(scores).map(([category, score])=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["default"].Fragment, {
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
+                                className: "font-medium text-gray-700",
+                                children: category
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/ScoreTable.tsx",
+                                lineNumber: 20,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
+                                className: "text-right text-gray-900",
+                                children: score
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/ScoreTable.tsx",
+                                lineNumber: 21,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, category, true, {
+                        fileName: "[project]/src/components/ScoreTable.tsx",
+                        lineNumber: 19,
+                        columnNumber: 11
+                    }, this))
+            }, void 0, false, {
+                fileName: "[project]/src/components/ScoreTable.tsx",
+                lineNumber: 17,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/src/components/ScoreTable.tsx",
+        lineNumber: 15,
+        columnNumber: 5
+    }, this);
+};
+const __TURBOPACK__default__export__ = ScoreTable;
+}}),
 "[project]/src/components/DiceRoller.tsx [ssr] (ecmascript)": ((__turbopack_context__) => {
 "use strict";
 
@@ -294,6 +410,7 @@ var __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$
 var __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/cannon-es [external] (cannon-es, cjs)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$generateDice$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/utils/generateDice.ts [ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$getTopFaceNumber$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/utils/getTopFaceNumber.ts [ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ScoreTable$2e$tsx__$5b$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ScoreTable.tsx [ssr] (ecmascript)");
 var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
     __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__,
     __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$generateDice$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__,
@@ -301,6 +418,7 @@ var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
 ]);
 ([__TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$generateDice$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$getTopFaceNumber$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__] = __turbopack_async_dependencies__.then ? (await __turbopack_async_dependencies__)() : __turbopack_async_dependencies__);
 'use client';
+;
 ;
 ;
 ;
@@ -321,6 +439,7 @@ const DiceRoller = ()=>{
     const selectedCountRef = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useRef"])(0); // 선택된 주사위 개수 추적
     const selectedMeshRefs = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useRef"])([]);
     const selectedDiceMapRef = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useRef"])(new Map());
+    const [topFaces, setTopFaces] = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useState"])([]);
     const [rollCount, setRollCount] = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useState"])(0);
     const maxRollCount = 3;
     function getDynamicFixedPositions(n) {
@@ -340,7 +459,6 @@ const DiceRoller = ()=>{
         scoreRef.current.innerHTML = '';
         diceArrayRef.current.forEach((d, i)=>{
             if (d.selected) return;
-            // ✅ FIX: 물리 타입을 DYNAMIC으로 리셋하여 다시 움직이게 합니다.
             d.body.type = __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Body"].DYNAMIC;
             d.body.allowSleep = true;
             d.body.velocity.setZero();
@@ -516,11 +634,12 @@ const DiceRoller = ()=>{
             if (allSleeping && allArrived && !scored) {
                 const selectedDiceList = Array.from(selectedDiceMapRef.current.values());
                 if (selectedDiceList.length > 0) {
-                    const scores = selectedDiceList.map((d)=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$getTopFaceNumber$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__["getTopFaceNumber"])(d.mesh.quaternion));
-                    scoreRef.current.innerHTML = scores.join(', ');
+                    const faces = selectedDiceList.map((d)=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$getTopFaceNumber$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__["getTopFaceNumber"])(d.mesh.quaternion));
+                    setTopFaces(faces); // 상태 업데이트
+                    scoreRef.current.innerHTML = faces.join(', ');
                     scored = true;
                 } else {
-                    // 선택된 주사위가 없을 경우 점수 지우기
+                    setTopFaces([]); // 아무것도 선택 안 했을 경우
                     scoreRef.current.innerHTML = '';
                 }
             }
@@ -683,6 +802,20 @@ const DiceRoller = ()=>{
                 lineNumber: 457,
                 columnNumber: 7
             }, this),
+            topFaces.length >= 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
+                className: "absolute left-8 top-20 z-10",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ScoreTable$2e$tsx__$5b$ssr$5d$__$28$ecmascript$29$__["default"], {
+                    dice: topFaces
+                }, void 0, false, {
+                    fileName: "[project]/src/components/DiceRoller.tsx",
+                    lineNumber: 462,
+                    columnNumber: 11
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/src/components/DiceRoller.tsx",
+                lineNumber: 461,
+                columnNumber: 9
+            }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
                 className: "absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-center",
                 children: [
@@ -691,7 +824,7 @@ const DiceRoller = ()=>{
                         className: "text-lg font-semibold bg-white px-4 py-2 rounded shadow"
                     }, void 0, false, {
                         fileName: "[project]/src/components/DiceRoller.tsx",
-                        lineNumber: 462,
+                        lineNumber: 467,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("button", {
@@ -707,7 +840,7 @@ const DiceRoller = ()=>{
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/DiceRoller.tsx",
-                        lineNumber: 463,
+                        lineNumber: 468,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("button", {
@@ -716,13 +849,13 @@ const DiceRoller = ()=>{
                         children: "OK"
                     }, void 0, false, {
                         fileName: "[project]/src/components/DiceRoller.tsx",
-                        lineNumber: 474,
+                        lineNumber: 479,
                         columnNumber: 10
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/DiceRoller.tsx",
-                lineNumber: 461,
+                lineNumber: 466,
                 columnNumber: 7
             }, this)
         ]
@@ -917,4 +1050,4 @@ __turbopack_async_result__();
 
 };
 
-//# sourceMappingURL=%5Broot-of-the-server%5D__981f23ac._.js.map
+//# sourceMappingURL=%5Broot-of-the-server%5D__8aada8a8._.js.map

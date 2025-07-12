@@ -6,13 +6,14 @@ import * as CANNON from 'cannon-es';
 import { Dice } from '../types/dice';
 import { generateDice } from '../utils/generateDice';
 import { getTopFaceNumber } from '../utils/getTopFaceNumber';
+import ScoreTable from './ScoreTable';
+import { calculateScores } from '../utils/calculateScores';
 
 
 
 const DiceRoller: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scoreRef = useRef<HTMLSpanElement | null>(null);
-
   const rendererRef = useRef<THREE.WebGLRenderer>(null);
   const sceneRef = useRef<THREE.Scene>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
@@ -24,6 +25,7 @@ const DiceRoller: React.FC = () => {
   const selectedCountRef = useRef(0); // 선택된 주사위 개수 추적
   const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
   const selectedDiceMapRef = useRef<Map<string, Dice>>(new Map());
+  const [topFaces, setTopFaces] = useState<number[]>([]);
 
   const [rollCount, setRollCount] = useState(0);
   const maxRollCount = 3;
@@ -51,7 +53,6 @@ const DiceRoller: React.FC = () => {
     diceArrayRef.current.forEach((d, i) => {
       if (d.selected) return; 
 
-      // ✅ FIX: 물리 타입을 DYNAMIC으로 리셋하여 다시 움직이게 합니다.
       d.body.type = CANNON.Body.DYNAMIC;
       d.body.allowSleep = true;
 
@@ -98,7 +99,6 @@ const DiceRoller: React.FC = () => {
         d.mesh.rotation.y,
         d.mesh.rotation.z
       );
-
       // 무작위 임펄스 적용
       const force = 3 + 5 * Math.random();
       d.body.applyImpulse(
@@ -230,7 +230,7 @@ const DiceRoller: React.FC = () => {
       let allSleeping = true;
       let allArrived = true;
 
-      const speed = 0.5; // 한 프레임당 이동 거리
+      const speed = 0.3; // 한 프레임당 이동 거리
 
       for (const dice of diceArrayRef.current) {
         scored = false;
@@ -249,7 +249,6 @@ const DiceRoller: React.FC = () => {
           if (dist > 0.4) {
             const direction = new THREE.Vector3().subVectors(target, current).normalize();
             const move = direction.multiplyScalar(speed);
-
             dice.mesh.position.add(move);
             dice.body.position.copy(dice.mesh.position as any);
           } else {
@@ -257,7 +256,6 @@ const DiceRoller: React.FC = () => {
             dice.body.position.copy(new CANNON.Vec3(target.x, target.y, target.z));
             dice.targetPosition = undefined;
           }
-
           dice.body.quaternion.copy(dice.body.quaternion);
         }
 
@@ -267,17 +265,16 @@ const DiceRoller: React.FC = () => {
         }
       }
 
-      
       // 점수 표시
-      if (allSleeping && allArrived && !scored) {
-        const selectedDiceList = Array.from(selectedDiceMapRef.current.values());
-
+      if (allSleeping && allArrived && !scored) { 
+        const selectedDiceList = Array.from(selectedDiceMapRef.current.values());      
         if (selectedDiceList.length > 0) {
-          const scores = selectedDiceList.map(d => getTopFaceNumber(d.mesh.quaternion));
-          scoreRef.current!.innerHTML = scores.join(', ');
+          const faces = selectedDiceList.map(d => getTopFaceNumber(d.mesh.quaternion));
+          setTopFaces(faces); // 상태 업데이트
+          scoreRef.current!.innerHTML = faces.join(', ');
           scored = true;
-        }else {
-          // 선택된 주사위가 없을 경우 점수 지우기
+        } else {
+          setTopFaces([]); // 아무것도 선택 안 했을 경우
           scoreRef.current!.innerHTML = '';
         }
       }
@@ -296,21 +293,19 @@ const DiceRoller: React.FC = () => {
       diceArrayRef.current.forEach((d, i) => {
         if (d.selected) return; // 선택된 주사위는 고정
 
+        
         d.body.velocity.setZero();
         d.body.angularVelocity.setZero();
         d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
         d.mesh.position.copy(d.body.position);
         d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
-
         const threeQuat = d.mesh.quaternion;
         d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
-
         const force = 3 + 5 * Math.random();
         d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
         d.body.allowSleep = true;
         d.body.wakeUp(); // 반드시 wakeUp!
       });
-
       setRollCount(prev => prev + 1);
     };
 
@@ -325,31 +320,6 @@ const DiceRoller: React.FC = () => {
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-
-    function animateSingleDice(dice: Dice) {
-      let isRunning = true;
-
-      function animate() {
-        if (!isRunning) return;
-
-        // 회전 적용 (Three.js)
-        dice.mesh.rotation.y += 0.01;
-
-        // 필요 시, Cannon Body에도 반영
-        dice.body.quaternion.setFromEuler(
-          dice.mesh.rotation.x,
-          dice.mesh.rotation.y,
-          dice.mesh.rotation.z
-        );
-
-        requestAnimationFrame(animate);
-      }
-
-      animate();
-
-      // 나중에 멈추려면 외부에서 isRunning = false 설정
-    }
-
 
     const onClick = (event: MouseEvent) => {
       if (!canvasRef.current || !cameraRef.current || !physicsWorldRef.current) return;
@@ -480,19 +450,31 @@ const DiceRoller: React.FC = () => {
   return (
     <div className="relative w-full h-screen">
       {/* 시뮬레이터 canvas 전체화면 */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+        <h1 className="text-4xl font-bold text-black drop-shadow-lg">YACHT GAME</h1>
+      </div>
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
       <div className="absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium">
         선택된 주사위: {selectedMeshes.length}개
       </div>
+      {topFaces.length >= 0 && (
+        <div className="absolute left-8 top-20 z-10">
+          <ScoreTable dice={topFaces} />
+        </div>
+      )}
       {/* 점수 및 버튼 (optional) */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-center">
-        
         <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
         <button
-          onClick={throwDice} // Change this from window.location.reload()
-          className="ml-4 px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600"
-        >
-          Throw the Dice ({rollCount}/{maxRollCount})
+            onClick={throwDice}
+            disabled={rollCount >= maxRollCount}
+            className={`ml-4 px-4 py-2 rounded shadow text-white ${
+              rollCount >= maxRollCount
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            Throw the Dice ({rollCount}/{maxRollCount})
         </button>
          <button
           onClick={handleResetAndThrow}
