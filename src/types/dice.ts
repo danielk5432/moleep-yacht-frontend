@@ -11,13 +11,17 @@ export class Dice {
   targetPosition?: THREE.Vector3;
   faceNumber: number[];
   meshOrder: number[];
-  color: string;
+  backgroundColor: string;
+  borderColor: string;
+  dotColor: string;
 
   constructor(id: number) {
     this.id = id;
     this.faceNumber = [1, 2, 3, 4, 5, 6]; // 기본값, 상속받아서 수정
-    this.meshOrder = [1, 2, 3, 4, 5, 6]; // 기본값, 상속받아서 수정
-    this.color = '#ffffff'; // 기본값, 상속받아서 수정
+    this.meshOrder = [1, 6, 2, 5, 3, 4]; // 기본값, 상속받아서 수정
+    this.backgroundColor = '#ffffff'; // 기본 배경색
+    this.borderColor = '#ffffff'; // 기본 테두리색
+    this.dotColor = '#000000'; // 기본 점색
     this.selected = false;
     this.stoppedPosition = undefined;
     this.stoppedQuaternion = undefined;
@@ -28,7 +32,7 @@ export class Dice {
     this.body = this.createDiceBody();
   }
 
-  private createDiceMesh(): THREE.Mesh {
+  protected createDiceMesh(): THREE.Mesh {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const textures = this.createDiceTextures();
 
@@ -53,10 +57,11 @@ export class Dice {
     });
   }
 
-  private createDiceTextures(): THREE.Texture[] {
+  protected createDiceTextures(): THREE.Texture[] {
     const textures: THREE.Texture[] = [];
     const dotRadius = 10;
     const size = 100;
+    const borderWidth = 8;
 
     // 기본 dotPositions (1,2,3,4,5,6 순서)
     const dotPositions = [
@@ -69,17 +74,26 @@ export class Dice {
     ];
 
     // meshOrder에 따라 dotPositions 재배열
-    const orderedDotPositions = this.meshOrder.map(order => dotPositions[order - 1]);
+    const orderedDotPositions = this.meshOrder.map(order => dotPositions[this.faceNumber[order - 1] - 1]);
 
     for (let i = 0; i < 6; i++) {
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = size;
       const ctx = canvas.getContext('2d')!;
 
-      ctx.fillStyle = this.color;
+      // 배경색
+      ctx.fillStyle = this.backgroundColor;
       ctx.fillRect(0, 0, size, size);
 
-      ctx.fillStyle = '#000000';
+      // 테두리 그리기
+      ctx.fillStyle = this.borderColor;
+      ctx.fillRect(0, 0, size, borderWidth); // 상단
+      ctx.fillRect(0, size - borderWidth, size, borderWidth); // 하단
+      ctx.fillRect(0, 0, borderWidth, size); // 좌측
+      ctx.fillRect(size - borderWidth, 0, borderWidth, size); // 우측
+
+      // 점 그리기
+      ctx.fillStyle = this.dotColor;
       const spacing = size / 4;
       for (const [row, col] of orderedDotPositions[i]) {
         ctx.beginPath();
@@ -98,12 +112,12 @@ export class Dice {
 
     // 각 면의 노멀과 숫자 매핑 (meshOrder에 따라)
     const faceNormals = [
-      { normal: new THREE.Vector3(1, 0, 0), number: this.faceNumber[0] },   // +X
-      { normal: new THREE.Vector3(-1, 0, 0), number: this.faceNumber[1] },  // -X
-      { normal: new THREE.Vector3(0, 1, 0), number: this.faceNumber[2] },   // +Y
-      { normal: new THREE.Vector3(0, -1, 0), number: this.faceNumber[3] },  // -Y
-      { normal: new THREE.Vector3(0, 0, 1), number: this.faceNumber[4] },   // +Z
-      { normal: new THREE.Vector3(0, 0, -1), number: this.faceNumber[5] }   // -Z
+      { normal: new THREE.Vector3(1, 0, 0), meshIndex: 0 },   // +X
+      { normal: new THREE.Vector3(-1, 0, 0), meshIndex: 1 },  // -X
+      { normal: new THREE.Vector3(0, 1, 0), meshIndex: 2 },   // +Y
+      { normal: new THREE.Vector3(0, -1, 0), meshIndex: 3 },  // -Y
+      { normal: new THREE.Vector3(0, 0, 1), meshIndex: 4 },   // +Z
+      { normal: new THREE.Vector3(0, 0, -1), meshIndex: 5 }   // -Z
     ];
 
     // 가장 유사한 노멀 (코사인 유사도 기반)
@@ -114,7 +128,9 @@ export class Dice {
       const dot = up.dot(face.normal.applyQuaternion(this.mesh.quaternion));
       if (dot > maxDot) {
         maxDot = dot;
-        topNumber = face.number;
+        // meshOrder를 참고해서 올바른 faceNumber 찾기
+        const meshOrderValue = this.meshOrder[face.meshIndex];
+        topNumber = this.faceNumber[meshOrderValue - 1];
       }
     }
 
