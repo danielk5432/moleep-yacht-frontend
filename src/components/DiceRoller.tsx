@@ -26,6 +26,8 @@ const DiceRoller: React.FC = () => {
   const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
   const selectedDiceMapRef = useRef<Map<string, Dice>>(new Map());
   const [topFaces, setTopFaces] = useState<number[]>([]);
+  const [savedScores, setSavedScores] = useState<Map<string, number>>(new Map());
+  
 
   const [rollCount, setRollCount] = useState(0);
   const maxRollCount = 3;
@@ -79,6 +81,9 @@ const DiceRoller: React.FC = () => {
 
     setRollCount(prev => prev + 1);
   };
+
+
+  
 
   const handleResetAndThrow = () => {
     setRollCount(1);
@@ -134,6 +139,43 @@ const DiceRoller: React.FC = () => {
     edgeRadius: 0.07,
     notchRadius: 0.15,
     notchDepth: 0.1,
+  };
+
+  const handleScoreClick = (category: string, score: number) => {
+    if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
+    setSavedScores(prev => new Map(prev.set(category, score)));
+
+    // 상태 초기화
+    setRollCount(1);
+    selectedMeshRefs.current = [];
+    selectedDiceMapRef.current.clear();
+    setSelectedMeshes([]);
+    setSelectedDiceMap(new Map());
+    selectedCountRef.current = 0;
+    setTopFaces([]);
+
+    // 주사위 모두 선택 해제 및 위치 초기화
+    diceArrayRef.current.forEach((d, i) => {
+      d.selected = false;
+      d.body.type = CANNON.Body.DYNAMIC;
+      d.body.allowSleep = true;
+      d.body.velocity.setZero();
+      d.body.angularVelocity.setZero();
+      d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
+      d.mesh.position.copy(d.body.position);
+      d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+      d.body.quaternion.setFromEuler(
+        d.mesh.rotation.x,
+        d.mesh.rotation.y,
+        d.mesh.rotation.z
+      );
+      const force = 3 + 5 * Math.random();
+      d.body.applyImpulse(
+        new CANNON.Vec3(-force, force, 0),
+        new CANNON.Vec3(0, 0, 0.2)
+      );
+      d.body.wakeUp();
+    });
   };
 
   useEffect(() => {
@@ -458,10 +500,27 @@ const DiceRoller: React.FC = () => {
       </div>
       {topFaces.length >= 0 && (
         <div className="absolute left-8 top-20 z-10">
-          <ScoreTable dice={topFaces} />
+         <ScoreTable dice={topFaces} onScoreClick={handleScoreClick} savedScores={savedScores} />
+        </div>
+      )}
+      {savedScores.size > 0 && (
+        <div className="absolute right-8 top-20 z-10 bg-white p-4 rounded shadow w-64">
+          <h2 className="font-bold mb-2 text-gray-800">📌 저장된 점수</h2>
+          <ul className="text-sm text-gray-700 space-y-1">
+            {Array.from(savedScores.entries()).map(([category, score]) => (
+              <li key={category} className="flex justify-between border-b pb-1">
+                <span>{category}</span>
+                <span>{score}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 text-right font-semibold">
+            총합: {Array.from(savedScores.values()).reduce((a, b) => a + b, 0)}
+          </div>
         </div>
       )}
       {/* 점수 및 버튼 (optional) */}
+
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-center">
         <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
         <button
