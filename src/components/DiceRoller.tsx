@@ -140,6 +140,7 @@ const DiceRoller: React.FC = () => {
     notchRadius: 0.15,
     notchDepth: 0.1,
   };
+  
 
   const handleScoreClick = (category: string, score: number) => {
     if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시

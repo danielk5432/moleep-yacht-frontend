@@ -76,8 +76,10 @@ export function calculateScores(dice: Dice[]): Record<string, Record<number, Dic
     },
 
     "Full House": {
-      [values.includes(3) && values.includes(2) ? sum + values.indexOf(3) : 0]: 
-        values.includes(3) && values.includes(2) ? dice : []
+        [values.includes(3) && values.includes(2)
+            ? sum + Number([...counts.entries()].find(([_, c]) => c === 3)?.[0] ?? 0)
+            : 0]:
+            values.includes(3) && values.includes(2) ? dice : []
     },
 
     "Little Straight": {
@@ -91,7 +93,7 @@ export function calculateScores(dice: Dice[]): Record<string, Record<number, Dic
     },
 
     Yacht: {
-      [[...counts.entries()].find(([_, c]) => c >= 5)?.[0]! * 5 || 0]: 
+      [[...counts.entries()].find(([_, c]) => c >= 5)? 50 : 0]: 
         [...counts.entries()].find(([_, c]) => c >= 5) ? 
           dice.filter(d => d.getScore() === [...counts.entries()].find(([_, c]) => c >= 5)?.[0]) : []
     },
