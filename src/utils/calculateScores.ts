@@ -1,39 +1,101 @@
 // utils/calculateYachtScores.ts
+import { Dice } from "../types/dice";
 
-export function calculateScores(dice: number[]): Record<string, number> {
+function isConsecutive(numbers: number[], length: number, dice: Dice[]): { isValid: boolean; consecutiveDice: Dice[] } {
+  if (numbers.length < length) return { isValid: false, consecutiveDice: [] };
+  
+  for (let i = 0; i <= numbers.length - length; i++) {
+    let consecutive = true;
+    for (let j = 0; j < length - 1; j++) {
+      if (numbers[i + j + 1] - numbers[i + j] !== 1) {
+        consecutive = false;
+        break;
+      }
+    }
+    if (consecutive) {
+      // Find the dice that correspond to these consecutive numbers
+      const consecutiveNumbers = numbers.slice(i, i + length);
+      const consecutiveDice: Dice[] = [];
+      
+      for (const num of consecutiveNumbers) {
+        const diceWithThisNumber = dice.filter(d => d.getScore() === num);
+        if (diceWithThisNumber.length > 0) {
+          consecutiveDice.push(diceWithThisNumber[0]); // Take the first one
+        }
+      }
+      
+      return { isValid: true, consecutiveDice };
+    }
+  }
+  return { isValid: false, consecutiveDice: [] };
+}
+
+export function calculateScores(dice: Dice[]): Record<string, Record<number, Dice[]>> {
   //if (dice.length !== 5) throw new Error("Exactly 5 dice values required.");
 
+  const diceValues = dice.map(d => d.getScore());
   const counts = new Map<number, number>();
-  dice.forEach(d => counts.set(d, (counts.get(d) || 0) + 1));
+  diceValues.forEach(d => counts.set(d, (counts.get(d) || 0) + 1));
 
   const values = Array.from(counts.values());
-  const unique = Array.from(new Set(dice)).sort((a, b) => a - b);
+  const unique = Array.from(new Set(diceValues)).sort((a, b) => a - b);
 
-  const sum = dice.reduce((a, b) => a + b, 0);
+  const sum = diceValues.reduce((a, b) => a + b, 0);
 
-  const scores: Record<string, number> = {
-    Ones: dice.filter(d => d === 1).reduce((a, b) => a + b, 0),
-    Twos: dice.filter(d => d === 2).reduce((a, b) => a + b, 0),
-    Threes: dice.filter(d => d === 3).reduce((a, b) => a + b, 0),
-    Fours: dice.filter(d => d === 4).reduce((a, b) => a + b, 0),
-    Fives: dice.filter(d => d === 5).reduce((a, b) => a + b, 0),
-    Sixes: dice.filter(d => d === 6).reduce((a, b) => a + b, 0),
+  // Calculate straight results
+  const littleStraightResult = isConsecutive(unique, 4, dice);
+  const bigStraightResult = isConsecutive(unique, 5, dice);
+
+  const scores: Record<string, Record<number, Dice[]>> = {
+    Ones: {
+      [dice.filter(d => d.getScore() === 1).reduce((a, b) => a + b.getScore(), 0)]: dice.filter(d => d.getScore() === 1)
+    },
+    Twos: {
+      [dice.filter(d => d.getScore() === 2).reduce((a, b) => a + b.getScore(), 0)]: dice.filter(d => d.getScore() === 2)
+    },
+    Threes: {
+      [dice.filter(d => d.getScore() === 3).reduce((a, b) => a + b.getScore(), 0)]: dice.filter(d => d.getScore() === 3)
+    },
+    Fours: {
+      [dice.filter(d => d.getScore() === 4).reduce((a, b) => a + b.getScore(), 0)]: dice.filter(d => d.getScore() === 4)
+    },
+    Fives: {
+      [dice.filter(d => d.getScore() === 5).reduce((a, b) => a + b.getScore(), 0)]: dice.filter(d => d.getScore() === 5)
+    },
+    Sixes: {
+      [dice.filter(d => d.getScore() === 6).reduce((a, b) => a + b.getScore(), 0)]: dice.filter(d => d.getScore() === 6)
+    },
  
-    Choice: sum,
+    Choice: {
+      [sum]: dice
+    },
 
-    "Four of a Kind":
-      [...counts.entries()].find(([_, c]) => c >= 4)?.[0]! * 4 || 0,
+    "Four of a Kind": {
+      [[...counts.entries()].find(([_, c]) => c >= 4)?.[0]! * 4 || 0]: 
+        [...counts.entries()].find(([_, c]) => c >= 4) ? 
+          dice.filter(d => d.getScore() === [...counts.entries()].find(([_, c]) => c >= 4)?.[0]) : []
+    },
 
-    "Full House":
-      values.includes(3) && values.includes(2) ? sum : 0,
+    "Full House": {
+      [values.includes(3) && values.includes(2) ? sum : 0]: 
+        values.includes(3) && values.includes(2) ? dice : []
+    },
 
-    "Little Straight":
-      JSON.stringify(unique) === JSON.stringify([1, 2, 3, 4, 5]) ? 20 : 0,
+    "Little Straight": {
+      [littleStraightResult.isValid ? 20 : 0]: 
+        littleStraightResult.isValid ? littleStraightResult.consecutiveDice : []
+    },
 
-    "Big Straight":
-      JSON.stringify(unique) === JSON.stringify([2, 3, 4, 5, 6]) ? 30 : 0,
+    "Big Straight": {
+      [bigStraightResult.isValid ? 30 : 0]: 
+        bigStraightResult.isValid ? bigStraightResult.consecutiveDice : []
+    },
 
-    Yacht: values.includes(5) ? 50 : 0,
+    Yacht: {
+      [[...counts.entries()].find(([_, c]) => c >= 5)?.[0]! * 5 || 0]: 
+        [...counts.entries()].find(([_, c]) => c >= 5) ? 
+          dice.filter(d => d.getScore() === [...counts.entries()].find(([_, c]) => c >= 5)?.[0]) : []
+    },
   };
 
   return scores;
