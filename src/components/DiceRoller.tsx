@@ -267,7 +267,7 @@ const DiceRoller: React.FC = () => {
     ring.position.y = -7 + 0.01; // 살짝 위로
     scene.add(ring);
 
-    const newDice = generateDice(params.numberOfDice, scene, physicsWorld); // generate DICE
+    const newDice = generateDice(params.numberOfDice, scene, physicsWorld, 1); // generate DICE
     diceArrayRef.current = newDice;
 
     
