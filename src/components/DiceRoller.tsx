@@ -3,20 +3,12 @@
 import React, { useEffect, useRef, useState} from 'react';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { Dice } from '../types/dice';
+import { generateDice } from '../utils/generateDice';
+import { getTopFaceNumber } from '../utils/getTopFaceNumber';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import SelectedDiceView from './SelectedDiceView';
 
-type Dice = {
-  id: number;
-  mesh: THREE.Mesh;
-  body: CANNON.Body;
-  selected: boolean;
-   originalPosition: CANNON.Vec3; // 초기 생성 위치 (던지기 전 위치)
-  // finalPosition, finalQuaternion은 이제 '선택된 위치'가 아닌 '원본이 물리 시뮬레이션에서 멈춘 위치'를 저장하는 용도로 변경
-  // 굳이 필요 없다면 제거 가능하지만, 원본 위치 복원 시점에 유용할 수 있습니다.
-  stoppedPosition?: THREE.Vector3;
-  stoppedQuaternion?: THREE.Quaternion;
-};
 
 const DiceRoller: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -29,9 +21,9 @@ const DiceRoller: React.FC = () => {
   const physicsWorldRef = useRef<CANNON.World>(null);
   const diceArrayRef = useRef<Dice[]>([]);
   const [selectedMeshes, setSelectedMeshes] = useState<THREE.Mesh[]>([]);
-  const [selectedDiceMap, setSelectedDiceMap] = useState<Map<string, Dice>>(new Map()); // Key: clonedMesh.uuid, Value: original Dice object
+  const [selectedDiceMap, setSelectedDiceMap] = useState<Map<string, Dice>>(new Map());
   const selectedCountRef = useRef(0); // 선택된 주사위 개수 추적
-  const selectedMeshRefs = useRef<THREE.Mesh[]>([]); // This will hold references to the CLONED meshes
+  const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
 
 
   const fixedPositions: THREE.Vector3[] = [
@@ -97,7 +89,7 @@ const DiceRoller: React.FC = () => {
     );
     floor.receiveShadow = true;
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -7;
+    floor.position.y = -7; 
     scene.add(floor);
 
     const floorBody = new CANNON.Body({
@@ -138,116 +130,10 @@ const DiceRoller: React.FC = () => {
     ring.position.y = -7 + 0.01; // 살짝 위로
     scene.add(ring);
 
-    function createDiceTextures(baseColor: string = '#ffffff') {
-      const textures : THREE.Texture[] =  [];
-      const dotRadius = 10;
-      const size = 100;
+    const newDice = generateDice(params.numberOfDice, scene, physicsWorld); // generate DICE
+    diceArrayRef.current = newDice;
 
-      const dotPositions = [
-        [[1, 1]], // 1
-        [[0, 0], [2, 2]], // 2
-        [[0, 0], [1, 1], [2, 2]], // 3
-        [[0, 0], [0, 2], [2, 0], [2, 2]], // 4
-        [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]], // 5
-        [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]], // 6
-      ];
-
-      for (let i = 0; i < 6; i++) {
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = size;
-        const ctx = canvas.getContext('2d')!;
-
-        ctx.fillStyle = baseColor;
-        ctx.fillRect(0, 0, size, size);
-
-        ctx.fillStyle = '#000000';
-        const spacing = size / 4;
-        for (const [row, col] of dotPositions[i]) {
-          ctx.beginPath();
-          ctx.arc(spacing * (col + 1), spacing * (row + 1), dotRadius, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        textures.push(new THREE.CanvasTexture(canvas));
-      }
-
-      return textures;
-    }
-
-
-    function getTopFaceNumber(quaternion: THREE.Quaternion): number {
-      const up = new THREE.Vector3(0, 1, 0);
-      const faceNormals = [
-        { normal: new THREE.Vector3(1, 0, 0), number: 1 },
-        { normal: new THREE.Vector3(-1, 0, 0), number: 6 },
-        { normal: new THREE.Vector3(0, 1, 0), number: 2 },
-        { normal: new THREE.Vector3(0, -1, 0), number: 5 },
-        { normal: new THREE.Vector3(0, 0, 1), number: 3 },
-        { normal: new THREE.Vector3(0, 0, -1), number: 4 }
-      ];
-
-      let maxDot = -Infinity;
-      let topNumber = 0;
-
-      for (const face of faceNormals) {
-        const dot = up.dot(face.normal.clone().applyQuaternion(quaternion)); // Clone to avoid modifying the original normal
-        if (dot > maxDot) {
-          maxDot = dot;
-          topNumber = face.number;
-        }
-      }
-      return topNumber;
-    }
-
-    const createDiceMesh = (color: string) => {
-      const geometry = new THREE.BoxGeometry(1, 1, 1);
-      const textures = createDiceTextures();
-
-      const materials = textures.map(texture =>
-        new THREE.MeshStandardMaterial({
-          map: texture,
-          metalness: 0,
-          roughness: 0.3,
-        })
-      );
-
-      const mesh = new THREE.Mesh(geometry, materials);
-      mesh.castShadow = true;
-      return mesh;
-    };
-
-
-    const diceColors = ['#ffffff', '#ffdddd', '#ddffdd', '#ddddff', '#ffffdd'];
-
-    for (let i = 0; i < params.numberOfDice; i++) {
-      const index = i % diceColors.length;
-      const mesh = createDiceMesh(diceColors[index]);
-
-      scene.add(mesh);
-
-      const body = new CANNON.Body({
-        mass: 1,
-        shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
-        sleepTimeLimit: 0.1,
-      });
-
-      const initialPosition = new CANNON.Vec3(6, i * 1.5, 0);
-      body.position.copy(initialPosition);
-      mesh.position.copy(initialPosition);
-
-      physicsWorld.addBody(body);
-
-      diceArrayRef.current.push({
-        id: i,
-        mesh,
-        body,
-        selected: false,
-        originalPosition: initialPosition.clone(),
-        stoppedPosition: undefined,
-        stoppedQuaternion: undefined,
-      });
-    }
-
+    
     let scored = false;
 
     const render = () => {
@@ -255,14 +141,11 @@ const DiceRoller: React.FC = () => {
 
       let allSleeping = true;
       for (const dice of diceArrayRef.current) {
-        // Only update position/quaternion for dice that are NOT selected
-        if (!dice.selected) {
-          dice.mesh.position.copy(dice.body.position as any);
-          dice.mesh.quaternion.copy(dice.body.quaternion as any);
+        dice.mesh.position.copy(dice.body.position);
+        dice.mesh.quaternion.copy(dice.body.quaternion);
 
-          if (dice.body.sleepState !== CANNON.Body.SLEEPING) {
-            allSleeping = false;
-          }
+        if (dice.body.sleepState !== CANNON.Body.SLEEPING) {
+          allSleeping = false;
         }
       }
 
@@ -280,49 +163,20 @@ const DiceRoller: React.FC = () => {
       scored = false;
       if (!scoreResult) return;
       scoreResult.innerHTML = '';
-
-      // Clear all selected dice and put them back into play before throwing
-      selectedMeshRefs.current.forEach(clonedMesh => {
-        const originalDice = selectedDiceMap.get(clonedMesh.uuid);
-        if (originalDice) {
-          // Remove the cloned mesh from the scene
-          scene.remove(clonedMesh);
-          // Re-add the original mesh to the scene
-          scene.add(originalDice.mesh);
-          // Mark as not selected
-          originalDice.selected = false;
-          // Reset its physics state
-          originalDice.body.velocity.setZero();
-          originalDice.body.angularVelocity.setZero();
-          originalDice.body.position.copy(originalDice.originalPosition);
-          originalDice.body.quaternion.set(0, 0, 0, 1); // Reset quaternion
-          originalDice.mesh.position.copy(originalDice.originalPosition);
-          originalDice.mesh.quaternion.identity(); // Reset quaternion
-          originalDice.body.wakeUp();
-        }
-      });
-      setSelectedMeshes([]);
-      setSelectedDiceMap(new Map());
-      selectedMeshRefs.current = [];
-      selectedCountRef.current = 0;
-
-
       diceArrayRef.current.forEach((d, i) => {
-        // Ensure only unselected dice are thrown
-        if (!d.selected) {
-          d.body.velocity.setZero();
-          d.body.angularVelocity.setZero();
-          d.body.position.copy(d.originalPosition); // Use original position for reset
-          d.mesh.position.copy(d.body.position as any);
-          d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+        d.body.velocity.setZero();
+        d.body.angularVelocity.setZero();
+        d.body.position = new CANNON.Vec3(6, i * 1.5, 0);
+        d.mesh.position.copy(d.body.position);
+        d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
 
-          const threeQuat = d.mesh.quaternion;
-          d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
+        // ✅ three.js quaternion → cannon-es quaternion 변환
+        const threeQuat = d.mesh.quaternion;
+        d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
 
-          const force = 3 + 5 * Math.random();
-          d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
-          d.body.allowSleep = true;
-        }
+        const force = 3 + 5 * Math.random();
+        d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
+        d.body.allowSleep = true;
       });
     };
 
@@ -458,22 +312,24 @@ const DiceRoller: React.FC = () => {
     };
 
   }, []);
-
   return (
     <div className="relative w-full h-screen">
+      {/* 시뮬레이터 canvas 전체화면 */}
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
       <div className="absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium">
-        Selected Dice: {selectedMeshes.length}
+        선택된 주사위: {selectedMeshes.length}개
       </div>
+      {/* 점수 및 버튼 (optional) */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-center">
+        
         <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
         <button
-          onClick={() => window.location.reload()} // Changed to reload for simplicity for now
+          onClick={() => window.location.reload()}
           className="ml-4 px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600"
         >
           Throw the Dice
         </button>
-      </div>
+      </div> 
     </div>
   );
 };
