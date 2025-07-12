@@ -49,6 +49,9 @@ const DiceRoller: React.FC = () => {
 
     if (!scoreRef.current) return;
     scoreRef.current.innerHTML = '';
+    
+    // 점수판 초기화
+    setTopFaces([]);
 
     diceArrayRef.current.forEach((d, i) => {
       if (d.selected) return; 
@@ -120,6 +123,9 @@ const DiceRoller: React.FC = () => {
     if (scoreRef.current) {
       scoreRef.current.innerHTML = '';
     }
+    
+    // 점수판 초기화
+    setTopFaces([]);
   };
 
   const params = {
@@ -267,16 +273,12 @@ const DiceRoller: React.FC = () => {
 
       // 점수 표시
       if (allSleeping && allArrived && !scored) { 
-        const selectedDiceList = Array.from(selectedDiceMapRef.current.values());      
-        if (selectedDiceList.length > 0) {
-          const faces = selectedDiceList.map(d => getTopFaceNumber(d.mesh.quaternion));
-          setTopFaces(faces); // 상태 업데이트
-          scoreRef.current!.innerHTML = faces.join(', ');
-          scored = true;
-        } else {
-          setTopFaces([]); // 아무것도 선택 안 했을 경우
-          scoreRef.current!.innerHTML = '';
-        }
+        // 모든 주사위에 대해 점수 계산 (선택 여부 관계없이)
+        const allDice = diceArrayRef.current;
+        const faces = allDice.map(d => d.getScore());
+        setTopFaces(faces); // 상태 업데이트
+        scoreRef.current!.innerHTML = faces.join(', ');
+        scored = true;
       }
 
       // 렌더링 반복

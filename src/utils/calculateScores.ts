@@ -19,9 +19,8 @@ function isConsecutive(numbers: number[], length: number, dice: Dice[]): { isVal
       
       for (const num of consecutiveNumbers) {
         const diceWithThisNumber = dice.filter(d => d.getScore() === num);
-        if (diceWithThisNumber.length > 0) {
-          consecutiveDice.push(diceWithThisNumber[0]); // Take the first one
-        }
+        // 모든 해당 주사위를 추가 (첫 번째만이 아님)
+        consecutiveDice.push(...diceWithThisNumber);
       }
       
       return { isValid: true, consecutiveDice };

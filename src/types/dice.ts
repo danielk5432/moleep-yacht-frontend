@@ -11,29 +11,26 @@ export class Dice {
   targetPosition?: THREE.Vector3;
   faceNumber: number[];
   meshOrder: number[];
+  color: string;
 
-  constructor(
-    id: number,
-    faceNumber: number[] = [1, 2, 3, 4, 5, 6],
-    meshOrder: number[] = [1, 6, 2, 5, 3, 4],
-    color: string = '#ffffff'
-  ) {
+  constructor(id: number) {
     this.id = id;
-    this.faceNumber = faceNumber;
-    this.meshOrder = meshOrder;
+    this.faceNumber = [1, 2, 3, 4, 5, 6]; // 기본값, 상속받아서 수정
+    this.meshOrder = [1, 2, 3, 4, 5, 6]; // 기본값, 상속받아서 수정
+    this.color = '#ffffff'; // 기본값, 상속받아서 수정
     this.selected = false;
     this.stoppedPosition = undefined;
     this.stoppedQuaternion = undefined;
     this.targetPosition = undefined;
 
     // Create mesh and body
-    this.mesh = this.createDiceMesh(color);
+    this.mesh = this.createDiceMesh();
     this.body = this.createDiceBody();
   }
 
-  private createDiceMesh(color: string): THREE.Mesh {
+  private createDiceMesh(): THREE.Mesh {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const textures = this.createDiceTextures(color);
+    const textures = this.createDiceTextures();
 
     const materials = textures.map(texture =>
       new THREE.MeshStandardMaterial({
@@ -56,7 +53,7 @@ export class Dice {
     });
   }
 
-  private createDiceTextures(baseColor: string = '#ffffff'): THREE.Texture[] {
+  private createDiceTextures(): THREE.Texture[] {
     const textures: THREE.Texture[] = [];
     const dotRadius = 10;
     const size = 100;
@@ -69,7 +66,6 @@ export class Dice {
       [[0, 0], [0, 2], [2, 0], [2, 2]], // 4
       [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]], // 5
       [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]], // 6
-      
     ];
 
     // meshOrder에 따라 dotPositions 재배열
@@ -80,7 +76,7 @@ export class Dice {
       canvas.width = canvas.height = size;
       const ctx = canvas.getContext('2d')!;
 
-      ctx.fillStyle = baseColor;
+      ctx.fillStyle = this.color;
       ctx.fillRect(0, 0, size, size);
 
       ctx.fillStyle = '#000000';
