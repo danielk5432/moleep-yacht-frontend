@@ -320,13 +320,77 @@ const DiceRoller = ()=>{
     const [selectedDiceMap, setSelectedDiceMap] = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useState"])(new Map());
     const selectedCountRef = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useRef"])(0); // 선택된 주사위 개수 추적
     const selectedMeshRefs = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useRef"])([]);
-    const fixedPositions = [
-        new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](6, 0, 0),
-        new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](6, 0, 2),
-        new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](6, 0, -2),
-        new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](6, 0, 4),
-        new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](6, 0, -4)
-    ];
+    const selectedDiceMapRef = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useRef"])(new Map());
+    const [rollCount, setRollCount] = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react__$5b$external$5d$__$28$react$2c$__cjs$29$__["useState"])(0);
+    const maxRollCount = 3;
+    function getDynamicFixedPositions(n) {
+        const spacing = 1.5;
+        const startZ = -((n - 1) * spacing) / 2; // 중앙 정렬
+        const x = 6; // 오른쪽 정렬 기준 X 위치
+        const y = 0;
+        const positions = [];
+        for(let i = 0; i < n; i++){
+            positions.push(new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](x, y, startZ + i * spacing));
+        }
+        return positions;
+    }
+    const throwDice = ()=>{
+        if (rollCount >= maxRollCount) return;
+        if (!scoreRef.current) return;
+        scoreRef.current.innerHTML = '';
+        diceArrayRef.current.forEach((d, i)=>{
+            if (d.selected) return;
+            // ✅ FIX: 물리 타입을 DYNAMIC으로 리셋하여 다시 움직이게 합니다.
+            d.body.type = __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Body"].DYNAMIC;
+            d.body.allowSleep = true;
+            d.body.velocity.setZero();
+            d.body.angularVelocity.setZero();
+            d.mesh.position.copy(d.body.position);
+            const impulse = new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"]((Math.random() - 0.5) * 2, 20 + Math.random() * 5, (Math.random() - 0.5) * 2 // Z 방향: 약간의 흔들림
+            );
+            const contactPoint = new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](0, 0, 0.2); // 중심에서 약간 위쪽
+            const threeQuat = d.mesh.quaternion;
+            d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
+            d.body.applyImpulse(impulse, contactPoint);
+            d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+            d.body.wakeUp();
+        });
+        // 이 setTimeout 로직은 그대로 유지해도 괜찮습니다.
+        setRollCount((prev)=>prev + 1);
+    };
+    const handleResetAndThrow = ()=>{
+        setRollCount(1);
+        let i = 0;
+        // 선택 상태 및 위치 초기화
+        for (const d of diceArrayRef.current){
+            d.selected = false;
+            d.body.type = __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Body"].DYNAMIC;
+            d.body.allowSleep = true;
+            d.body.velocity.setZero();
+            d.body.angularVelocity.setZero();
+            // 초기 위치로 재배치
+            d.body.position = new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](4, i * 1.5, 0);
+            d.mesh.position.copy(d.body.position);
+            i += 1;
+            // 회전 무작위 설정
+            d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+            d.body.quaternion.setFromEuler(d.mesh.rotation.x, d.mesh.rotation.y, d.mesh.rotation.z);
+            // 무작위 임펄스 적용
+            const force = 3 + 5 * Math.random();
+            d.body.applyImpulse(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](-force, force, 0), new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](0, 0, 0.2));
+            d.body.wakeUp();
+        }
+        // 선택 상태 리셋
+        selectedMeshRefs.current = [];
+        selectedDiceMapRef.current.clear();
+        setSelectedMeshes([]);
+        setSelectedDiceMap(new Map());
+        selectedCountRef.current = 0;
+        // 점수 지우기
+        if (scoreRef.current) {
+            scoreRef.current.innerHTML = '';
+        }
+    };
     const params = {
         numberOfDice: 5,
         segments: 40,
@@ -387,7 +451,7 @@ const DiceRoller = ()=>{
         floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         physicsWorld.addBody(floorBody);
         const wallRadius = 5;
-        const wallHeight = 2;
+        const wallHeight = 7;
         const wallThickness = 0.3;
         // 비어 있는 원기둥으로 벽을 생성
         const wall = new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Body"]({
@@ -418,48 +482,97 @@ const DiceRoller = ()=>{
         const render = ()=>{
             physicsWorld.fixedStep();
             let allSleeping = true;
+            let allArrived = true;
+            const speed = 0.5; // 한 프레임당 이동 거리
             for (const dice of diceArrayRef.current){
+                scored = false;
+                // 기존 위치/회전 복사
                 dice.mesh.position.copy(dice.body.position);
                 dice.mesh.quaternion.copy(dice.body.quaternion);
+                // 🔍 targetPosition 체크
+                if (dice.targetPosition) {
+                    allArrived = false; // 아직 이동 중인 주사위 있음
+                    const current = dice.mesh.position;
+                    const target = dice.targetPosition;
+                    const dist = current.distanceTo(target);
+                    if (dist > 0.4) {
+                        const direction = new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"]().subVectors(target, current).normalize();
+                        const move = direction.multiplyScalar(speed);
+                        dice.mesh.position.add(move);
+                        dice.body.position.copy(dice.mesh.position);
+                    } else {
+                        dice.mesh.position.copy(target);
+                        dice.body.position.copy(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](target.x, target.y, target.z));
+                        dice.targetPosition = undefined;
+                    }
+                    dice.body.quaternion.copy(dice.body.quaternion);
+                }
+                // 💤 잠들었는지 체크
                 if (dice.body.sleepState !== __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Body"].SLEEPING) {
                     allSleeping = false;
                 }
             }
-            if (allSleeping && !scored) {
-                const scores = diceArrayRef.current.map((d)=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$getTopFaceNumber$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__["getTopFaceNumber"])(d.mesh.quaternion));
-                scoreRef.current.innerHTML = scores.join(' + ') + ' = ' + scores.reduce((a, b)=>a + b, 0);
-                scored = true;
+            // 점수 표시
+            if (allSleeping && allArrived && !scored) {
+                const selectedDiceList = Array.from(selectedDiceMapRef.current.values());
+                if (selectedDiceList.length > 0) {
+                    const scores = selectedDiceList.map((d)=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$getTopFaceNumber$2e$ts__$5b$ssr$5d$__$28$ecmascript$29$__["getTopFaceNumber"])(d.mesh.quaternion));
+                    scoreRef.current.innerHTML = scores.join(', ');
+                    scored = true;
+                } else {
+                    // 선택된 주사위가 없을 경우 점수 지우기
+                    scoreRef.current.innerHTML = '';
+                }
             }
+            // 렌더링 반복
             renderer.render(scene, camera);
             requestAnimationFrame(render);
         };
-        const throwDice = ()=>{
+        const initialThrow = ()=>{
+            if (rollCount >= maxRollCount) return;
             scored = false;
             if (!scoreResult) return;
             scoreResult.innerHTML = '';
             diceArrayRef.current.forEach((d, i)=>{
+                if (d.selected) return; // 선택된 주사위는 고정
                 d.body.velocity.setZero();
                 d.body.angularVelocity.setZero();
-                d.body.position = new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](6, i * 1.5, 0);
+                d.body.position = new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](4, i * 1.5, 0);
                 d.mesh.position.copy(d.body.position);
                 d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
-                // ✅ three.js quaternion → cannon-es quaternion 변환
                 const threeQuat = d.mesh.quaternion;
                 d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
                 const force = 3 + 5 * Math.random();
                 d.body.applyImpulse(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](-force, force, 0), new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](0, 0, 0.2));
                 d.body.allowSleep = true;
+                d.body.wakeUp(); // 반드시 wakeUp!
             });
+            setRollCount((prev)=>prev + 1);
         };
         window.addEventListener('resize', ()=>{
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-        throwDice();
+        initialThrow();
         render();
         const raycaster = new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Raycaster"]();
         const mouse = new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector2"]();
+        function animateSingleDice(dice) {
+            let isRunning = true;
+            function animate() {
+                if ("TURBOPACK compile-time falsy", 0) {
+                    "TURBOPACK unreachable";
+                }
+                // 회전 적용 (Three.js)
+                dice.mesh.rotation.y += 0.01;
+                // 필요 시, Cannon Body에도 반영
+                dice.body.quaternion.setFromEuler(dice.mesh.rotation.x, dice.mesh.rotation.y, dice.mesh.rotation.z);
+                requestAnimationFrame(animate);
+            }
+            animate();
+        // 나중에 멈추려면 외부에서 isRunning = false 설정
+        }
         const onClick = (event)=>{
             if (!canvasRef.current || !cameraRef.current || !physicsWorldRef.current) return;
             const rect = canvasRef.current.getBoundingClientRect();
@@ -478,26 +591,30 @@ const DiceRoller = ()=>{
                 console.log("Clicked on an already selected dice. Restoring it.");
                 clickedDice.selected = false;
                 // 물리 바디를 다시 활성화 (DYNAMIC)
-                clickedDice.body.type = __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Body"].DYNAMIC;
-                clickedDice.body.allowSleep = true;
                 clickedDice.body.velocity.setZero();
                 clickedDice.body.angularVelocity.setZero();
-                // 저장해 둔 물리 시뮬레이션이 멈춘 위치/회전으로 복원
-                if (clickedDice.stoppedPosition && clickedDice.stoppedQuaternion) {
-                    clickedDice.body.position.copy(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](clickedDice.stoppedPosition.x, clickedDice.stoppedPosition.y, clickedDice.stoppedPosition.z));
-                    clickedDice.body.quaternion.copy(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Quaternion"](clickedDice.stoppedQuaternion.x, clickedDice.stoppedQuaternion.y, clickedDice.stoppedQuaternion.z, clickedDice.stoppedQuaternion.w));
-                } else {
-                    // stoppedPosition이 없으면 초기 originalPosition으로 복원 (안전 장치)
-                    clickedDice.body.position.copy(clickedDice.originalPosition);
-                    clickedDice.body.quaternion.set(0, 0, 0, 1);
+                const original = clickedDice.stoppedPosition;
+                if (original) {
+                    clickedDice.targetPosition = new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](original.x, original.y, original.z);
                 }
-                clickedDice.mesh.position.copy(clickedDice.body.position);
-                clickedDice.mesh.quaternion.copy(clickedDice.body.quaternion);
-                clickedDice.body.wakeUp(); // 물리 시뮬레이션에 참여하도록 깨우기
+                // 저장해 둔 물리 시뮬레이션이 멈춘 위치/회전으로 복원
+                if (clickedDice.stoppedQuaternion) {
+                    clickedDice.body.quaternion.copy(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Quaternion"](clickedDice.stoppedQuaternion.x, clickedDice.stoppedQuaternion.y, clickedDice.stoppedQuaternion.z, clickedDice.stoppedQuaternion.w));
+                }
+                clickedDice.body.type = __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Body"].DYNAMIC;
+                clickedDice.body.allowSleep = true;
+                //clickedDice.body.wakeUp(); // 물리 시뮬레이션에 참여하도록 깨우기
                 setSelectedMeshes((prev)=>prev.filter((m)=>m.uuid !== clickedDice.mesh.uuid));
                 setSelectedDiceMap((prev)=>{
                     const map = new Map(prev);
                     map.delete(clickedDice.mesh.uuid);
+                    // 위치 재정렬
+                    const updated = Array.from(map.values());
+                    const newPositions = getDynamicFixedPositions(updated.length);
+                    updated.forEach((d, i)=>{
+                        d.targetPosition = newPositions[i];
+                    });
+                    selectedDiceMapRef.current = map;
                     return map;
                 });
                 selectedCountRef.current -= 1;
@@ -517,12 +634,11 @@ const DiceRoller = ()=>{
                 clickedDice.body.allowSleep = false; // 더 이상 슬립 상태가 되면 안됨
                 // 화면상에서 주사위를 고정된 위치로 직접 이동
                 const currentSelectedCount = selectedCountRef.current;
-                const targetPosition = fixedPositions[currentSelectedCount] ?? new __TURBOPACK__imported__module__$5b$externals$5d2f$three__$5b$external$5d$__$28$three$2c$__esm_import$29$__["Vector3"](8, currentSelectedCount * 1.5, 0);
-                clickedDice.mesh.position.copy(targetPosition);
-                // 회전은 유지하거나 필요하면 특정 각도로 고정
-                // clickedDice.mesh.quaternion.identity(); // 예: 선택 시 정렬하고 싶다면
-                // 물리 바디의 위치도 해당 위치로 직접 설정
-                clickedDice.body.position.copy(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Vec3"](targetPosition.x, targetPosition.y, targetPosition.z));
+                const updatedPositions = getDynamicFixedPositions(currentSelectedCount + 1);
+                Array.from(selectedDiceMapRef.current.values()).forEach((d, index)=>{
+                    d.targetPosition = updatedPositions[index];
+                });
+                clickedDice.targetPosition = updatedPositions[currentSelectedCount];
                 // 물리 바디의 회전도 메시와 동기화
                 clickedDice.body.quaternion.copy(new __TURBOPACK__imported__module__$5b$externals$5d2f$cannon$2d$es__$5b$external$5d$__$28$cannon$2d$es$2c$__cjs$29$__["Quaternion"](clickedDice.mesh.quaternion.x, clickedDice.mesh.quaternion.y, clickedDice.mesh.quaternion.z, clickedDice.mesh.quaternion.w));
                 setSelectedMeshes((prev)=>[
@@ -532,6 +648,8 @@ const DiceRoller = ()=>{
                 setSelectedDiceMap((prev)=>{
                     const map = new Map(prev);
                     map.set(clickedDice.mesh.uuid, clickedDice);
+                    selectedDiceMapRef.current = map;
+                    console.log("✅ selectedDiceMap에 추가됨:", clickedDice.mesh.uuid);
                     return map;
                 });
                 selectedCountRef.current += 1;
@@ -550,7 +668,7 @@ const DiceRoller = ()=>{
                 className: "absolute top-0 left-0 w-full h-full z-0"
             }, void 0, false, {
                 fileName: "[project]/src/components/DiceRoller.tsx",
-                lineNumber: 318,
+                lineNumber: 483,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
@@ -562,7 +680,7 @@ const DiceRoller = ()=>{
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/DiceRoller.tsx",
-                lineNumber: 319,
+                lineNumber: 484,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("div", {
@@ -573,28 +691,43 @@ const DiceRoller = ()=>{
                         className: "text-lg font-semibold bg-white px-4 py-2 rounded shadow"
                     }, void 0, false, {
                         fileName: "[project]/src/components/DiceRoller.tsx",
-                        lineNumber: 325,
+                        lineNumber: 490,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("button", {
-                        onClick: ()=>window.location.reload(),
+                        onClick: throwDice,
                         className: "ml-4 px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600",
-                        children: "Throw the Dice"
+                        children: [
+                            "Throw the Dice (",
+                            rollCount,
+                            "/",
+                            maxRollCount,
+                            ")"
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/components/DiceRoller.tsx",
+                        lineNumber: 491,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$externals$5d2f$react$2f$jsx$2d$dev$2d$runtime__$5b$external$5d$__$28$react$2f$jsx$2d$dev$2d$runtime$2c$__cjs$29$__["jsxDEV"])("button", {
+                        onClick: handleResetAndThrow,
+                        className: "ml-2 px-4 py-2 bg-green-500 text-white rounded shadow hover:bg-green-600",
+                        children: "OK"
                     }, void 0, false, {
                         fileName: "[project]/src/components/DiceRoller.tsx",
-                        lineNumber: 326,
-                        columnNumber: 9
+                        lineNumber: 497,
+                        columnNumber: 10
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/DiceRoller.tsx",
-                lineNumber: 323,
+                lineNumber: 488,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/DiceRoller.tsx",
-        lineNumber: 316,
+        lineNumber: 481,
         columnNumber: 5
     }, this);
 };

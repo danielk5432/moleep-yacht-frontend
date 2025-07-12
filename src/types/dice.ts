@@ -9,4 +9,6 @@ export type Dice = {
   originalPosition: CANNON.Vec3;
   stoppedPosition?: THREE.Vector3;
   stoppedQuaternion?: THREE.Quaternion;
+  targetPosition?: THREE.Vector3;
+
 };
