@@ -26,3 +26,15 @@ yarn-error.log*
 
 # 기타
 coverage/  # 테스트 커버리지 결과
+
+# 📦 패키지 매니저 관련
+node_modules/
+
+# ⚙️ Next.js 및 빌드 결과물
+.next/
+dist/
+
+# 📝 로그 및 캐시 파일
+*.log
+*.cache
+*.lock.json

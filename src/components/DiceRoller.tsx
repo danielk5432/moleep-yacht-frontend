@@ -292,8 +292,6 @@ const DiceRoller: React.FC = () => {
       scoreResult.innerHTML = '';
       diceArrayRef.current.forEach((d, i) => {
         if (d.selected) return; // 선택된 주사위는 고정
-
-        
         d.body.velocity.setZero();
         d.body.angularVelocity.setZero();
         d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
@@ -373,7 +371,6 @@ const DiceRoller: React.FC = () => {
         clickedDice.body.type = CANNON.Body.DYNAMIC;
         clickedDice.body.allowSleep = true;
         //clickedDice.body.wakeUp(); // 물리 시뮬레이션에 참여하도록 깨우기
-
         setSelectedMeshes(prev => prev.filter(m => m.uuid !== clickedDice.mesh.uuid));
         setSelectedDiceMap(prev => {
           const map = new Map(prev);

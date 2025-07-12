@@ -23,8 +23,8 @@ export function getTopFaceNumber(quaternion: THREE.Quaternion): number {
     if (dot > maxDot) {
         maxDot = dot;
         topNumber = face.number;
+        }
     }
-    }
-
     return topNumber;
 }
+
