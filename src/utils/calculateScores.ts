@@ -76,7 +76,7 @@ export function calculateScores(dice: Dice[]): Record<string, Record<number, Dic
     },
 
     "Full House": {
-      [values.includes(3) && values.includes(2) ? sum : 0]: 
+      [values.includes(3) && values.includes(2) ? sum + values.indexOf(3) : 0]: 
         values.includes(3) && values.includes(2) ? dice : []
     },
 
