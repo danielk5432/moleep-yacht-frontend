@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { api } from '../../utils/api';
 
 const AuthSuccess: React.FC = () => {
   const router = useRouter();
@@ -13,10 +14,27 @@ const AuthSuccess: React.FC = () => {
       // 토큰을 localStorage에 저장
       localStorage.setItem('authToken', token);
       
-      // 메인 페이지로 리다이렉트
-      router.push('/');
+      // 프로필 설정 여부 확인 후 리다이렉트
+      checkProfileSetup(token);
     }
   }, [router.query]);
+
+  const checkProfileSetup = async (token: string) => {
+    try {
+      const userData = await api.getProfile(token);
+      
+      // 닉네임이 설정되어 있지 않으면 프로필 설정 페이지로
+      if (!userData.nickname || !userData.profileSetup) {
+        router.push('/setup-profile');
+      } else {
+              // 닉네임이 설정되어 있으면 메인 페이지로
+      router.push('/main');
+      }
+    } catch (error) {
+      console.error('Profile check error:', error);
+      router.push('/main');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center">

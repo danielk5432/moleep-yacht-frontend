@@ -270,7 +270,9 @@ const DiceRoller: React.FC = () => {
         const allDice = diceArrayRef.current;
         const faces = allDice.map(d => d.getScore());
         setTopFaces(faces); // 상태 업데이트
-        scoreRef.current!.innerHTML = faces.join(', ');
+        if (scoreRef.current) {
+          scoreRef.current.innerHTML = faces.join(', ');
+        }
         scored = true;
       }
 

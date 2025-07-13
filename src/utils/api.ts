@@ -16,20 +16,27 @@ export const api = {
     console.log('API_BASE_URL:', API_BASE_URL);
     console.log('Requesting URL:', `${API_BASE_URL}/api/profile`);
     
-    const response = await fetch(`${API_BASE_URL}/api/profile`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      throw new Error('Failed to get profile');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Profile fetch error:', errorText);
+        throw new Error(`Failed to get profile: ${response.status} ${errorText}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Network error:', error);
+      throw error;
     }
-    
-    return response.json();
   },
 
   // 토큰 유효성 검사
@@ -44,6 +51,55 @@ export const api = {
       return response.ok;
     } catch (error) {
       return false;
+    }
+  },
+
+  // 닉네임 설정
+  setupProfile: async (token: string, nickname: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/setup-profile`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nickname }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Profile setup error:', errorText);
+        throw new Error(`Failed to setup profile: ${response.status} ${errorText}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Network error during profile setup:', error);
+      throw error;
+    }
+  },
+
+  // 계정 삭제
+  deleteAccount: async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/delete-account`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Account deletion error:', errorText);
+        throw new Error(`Failed to delete account: ${response.status} ${errorText}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Network error during account deletion:', error);
+      throw error;
     }
   }
 }; 
