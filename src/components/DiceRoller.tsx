@@ -8,7 +8,7 @@ import { generateDice } from '../utils/generateDice';
 import { getTopFaceNumber } from '../utils/getTopFaceNumber';
 import ScoreTable from './ScoreTable';
 import { calculateScores } from '../utils/calculateScores';
-import { DiceState, GameState } from '../types/game';
+import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
 import { all } from 'three/tsl';
 
 
@@ -44,9 +44,13 @@ const DiceRoller: React.FC = () => {
   const [diceState, setDiceState] = useState<DiceState>('roll');
   const [isRolling, setIsRolling] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  // 게임 상태 관리
+  const [gamePhase, setGamePhase] = useState<GamePhase>('myturn');
+
   // 상태에 따른 조건들
-  const canSelect = diceState === 'stop';
-  const canRoll = diceState === 'stop' && rollCount < maxRollCount;
+  const canSelect = diceState === 'stop' && gamePhase === 'myturn';
+  const canRoll = diceState === 'stop' && rollCount < maxRollCount && gamePhase === 'myturn';
   
   // 디버깅용 로그
   console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
@@ -84,6 +88,33 @@ const DiceRoller: React.FC = () => {
     diceStateRef.current = 'animate';
     setIsRolling(false);
     setIsAnimating(true);
+  };
+
+  // 게임 액션 처리 함수들
+  const handleGameAction = (action: GameAction) => {
+    console.log('🎮 Game Action:', action.type, action.payload);
+    
+    switch (action.type) {
+      case 'THROW_DICE':
+        console.log('📤 WebSocket: Sending dice throw action');
+        break;
+      case 'SELECT_DICE':
+        console.log('📤 WebSocket: Sending dice selection action');
+        break;
+      case 'SCORE_POINT':
+        console.log('📤 WebSocket: Sending score action');
+        setGamePhase('oppturn');
+        console.log('🔄 Game Phase: myturn -> oppturn');
+        break;
+      case 'START_TURN':
+        console.log('🔄 Game Phase: Starting new turn');
+        setGamePhase('myturn');
+        setRollCount(0);
+        break;
+      case 'END_TURN':
+        console.log('🔄 Game Phase: Ending turn');
+        break;
+    }
   };
 
 
@@ -147,6 +178,9 @@ const DiceRoller: React.FC = () => {
     // rolling 상태로 변경
     setRollingState();
 
+    // 게임 액션 호출
+    handleGameAction({ type: 'THROW_DICE', payload: { rollCount: rollCount + 1 } });
+
     diceArrayRef.current.forEach((d, i) => {
       if (d.selected) return; 
 
@@ -184,6 +218,9 @@ const DiceRoller: React.FC = () => {
   const handleScoreClick = (category: string, score: number, diceArr :Dice[]) => {
     if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
     setSavedScores(prev => new Map(prev.set(category, score)));
+
+    // 게임 액션 호출
+    handleGameAction({ type: 'SCORE_POINT', payload: { category, score } });
 
     // 새로운 주사위 생성
     createNewDice();
@@ -511,6 +548,9 @@ const DiceRoller: React.FC = () => {
         // 애니메이션 시작
         setAnimatingState();
 
+        // 게임 액션 호출
+        handleGameAction({ type: 'SELECT_DICE', payload: { diceId: clickedDice.id } });
+
         // 물리 바디를 STATIC으로 변경하여 물리 시뮬레이션의 영향을 받지 않도록 함
         clickedDice.body.type = CANNON.Body.STATIC;
         clickedDice.body.allowSleep = false; // 더 이상 슬립 상태가 되면 안됨
@@ -603,7 +643,7 @@ const DiceRoller: React.FC = () => {
               : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          Throw the Dice ({rollCount}/{maxRollCount}) - {diceState}
+          Throw the Dice ({rollCount}/{maxRollCount}) - {diceState} [{gamePhase}]
         </button>
       </div> 
       {showResult && (
