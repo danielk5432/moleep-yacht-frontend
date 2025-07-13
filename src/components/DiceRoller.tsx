@@ -435,25 +435,28 @@ const DiceRoller: React.FC = () => {
       }
     };
 
-    if (savedScores.size === selectableCategories) {
-      setShowResult(true);
-    }
-
-    if (showResult) {
-    setTimeout(() => setResultVisible(true), 50);
-    } else {
-      setResultVisible(false);
-    }
     canvas.addEventListener('click', onClick);
     return () => {
       canvas.removeEventListener('click', onClick);
     };
-
-    
   }, [showResult]);
-  return (
-    
 
+    // 결과 화면 표시를 위한 useEffect 추가
+    useEffect(() => {
+      if (savedScores.size === selectableCategories) {
+        setShowResult(true);
+      }
+    }, [savedScores, selectableCategories]);
+
+    useEffect(() => {
+      if (showResult) {
+        setTimeout(() => setResultVisible(true), 50);
+      } else {
+        setResultVisible(false);
+      }
+    }, [showResult]);
+
+  return (
     <div className="relative w-full h-screen">
       {/* 시뮬레이터 canvas 전체화면 */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">

@@ -48,24 +48,36 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
   return (
     <React.Fragment key={category}>
       <div className={`font-medium text-gray-700 ${isUsed ? 'opacity-50' : ''}`}>{category}</div>
-      <div
-        className={
-          `text-right font-bold ` +
-          (isUsed
-            ? 'text-red-500 cursor-not-allowed opacity-80'
-            : 'text-gray-900 cursor-pointer hover:text-blue-600')
-        }
-        onClick={() => {
-          if (!isUsed) onScoreClick(category, score, scoreData[score]);
-        }}
-      >
-        {displayScore}
+      <div className="relative group">
+        <div
+          className={
+            `text-right font-bold ` +
+            (isUsed
+              ? 'text-red-500 cursor-not-allowed opacity-80'
+              : displayScore === 0
+                ? 'text-gray-400 cursor-pointer hover:text-blue-400'
+                : 'text-gray-900 cursor-pointer hover:text-blue-600')
+          }
+          onClick={() => {
+            if (!isUsed) onScoreClick(category, score, scoreData[score]);
+          }}
+        >
+          {displayScore}
+        </div>
+
+        {displayScore === 0 && !isUsed && (
+          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded shadow hidden group-hover:block whitespace-nowrap">
+            0점입니다
+          </div>
+        )}
       </div>
       {category === 'Sixes' && (
         <>
           <hr className="col-span-2 border-gray-400" />
           <div className="font-medium text-gray-700">+Bonus</div>
-          <div className="font-bold text-right text-gray-900">{bonus} {upperSum >= 63 ? '🎉' : ''}</div>
+          <div className={`font-bold text-right ${bonus === 0 ? 'text-gray-400' : 'text-red-500'}`}>
+            {bonus > 0 ? `${bonus} 🎉` : '-'}
+          </div>
           <hr className="col-span-2 border-gray-400" />
         </>
       )}
@@ -76,8 +88,8 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
 
  {/* Total 표시 */}
         <hr className="col-span-2 border-gray-400 my-1" />
-        <div className="font-medium text-gray-700">Total</div>
-        <div className="font-bold text-right text-gray-900">{total}</div>
+        <div className="font-medium text-gray-700 text-xl">Total</div>
+        <div className="font-bold text-right text-gray-900 text-xl">{total}</div>
       </div>
     </div>
 
