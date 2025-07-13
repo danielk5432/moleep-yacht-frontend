@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { api } from '../utils/api';
 
 interface User {
   id: string;
@@ -26,8 +27,7 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8443/auth/google');
-      const data = await response.json();
+      const data = await api.getGoogleAuthUrl();
       
       // Google OAuth 페이지로 리다이렉트
       window.location.href = data.authUrl;
@@ -43,19 +43,11 @@ const LoginPage: React.FC = () => {
       localStorage.setItem('authToken', token);
       
       // 사용자 정보 가져오기
-      const response = await fetch('http://localhost:8443/api/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const userData = await api.getProfile(token);
+      setUser(userData);
       
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        
-        // 메인 페이지로 리다이렉트
-        router.push('/');
-      }
+      // 메인 페이지로 리다이렉트
+      router.push('/');
     } catch (error) {
       console.error('Auth success error:', error);
     }
