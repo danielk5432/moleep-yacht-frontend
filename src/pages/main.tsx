@@ -22,6 +22,12 @@ const MainPage: React.FC = () => {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (user && user.nickname) {
+      localStorage.setItem('nickname', user.nickname);
+    }
+  }, [user]);
+
   const checkAuth = async () => {
     const token = localStorage.getItem('authToken');
     
@@ -126,6 +132,25 @@ const MainPage: React.FC = () => {
                 className="inline-block px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 게임 시작
+              </Link>
+            </div>
+          </div>
+
+          {/* 멀티플레이 카드 */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🤝</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">멀티플레이</h3>
+              <p className="text-gray-600 mb-6">
+                실시간 1:1 매칭으로 친구와 대결하세요!
+              </p>
+              <Link
+                href="/multiplayer/match"
+                className="inline-block px-6 py-3 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+              >
+                멀티플레이 매칭
               </Link>
             </div>
           </div>

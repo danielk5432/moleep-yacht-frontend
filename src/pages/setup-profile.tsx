@@ -65,7 +65,8 @@ const SetupProfile: React.FC = () => {
       
       // 새로운 토큰 저장
       localStorage.setItem('authToken', result.token);
-      
+      // 닉네임도 저장
+      localStorage.setItem('nickname', nickname.trim());
       console.log('Redirecting to main page...');
       // 메인 페이지로 이동
       router.push('/main');

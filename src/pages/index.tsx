@@ -35,6 +35,9 @@ const HomePage: React.FC = () => {
       
       console.log('Profile is setup, redirecting to main');
       // 프로필이 설정되어 있으면 메인 페이지로
+      if (userData.nickname) {
+        localStorage.setItem('nickname', userData.nickname);
+      }
       router.push('/main');
     } catch (error) {
       console.error('Auth check error:', error);

@@ -8,6 +8,8 @@ import { generateDice } from '../utils/generateDice';
 import { getTopFaceNumber } from '../utils/getTopFaceNumber';
 import ScoreTable from './ScoreTable';
 import { calculateScores } from '../utils/calculateScores';
+import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
+import { all } from 'three/tsl';
 
 
 const DiceRoller: React.FC = () => {
@@ -24,6 +26,8 @@ const DiceRoller: React.FC = () => {
   const selectedCountRef = useRef(0); // 선택된 주사위 개수 추적
   const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
   const selectedDiceMapRef = useRef<Map<string, Dice>>(new Map());
+  const scoredRef = useRef(false); // 점수 계산 상태 추적
+  const diceStateRef = useRef<DiceState>('roll'); // 현재 상태 추적
   const [topFaces, setTopFaces] = useState<number[]>([]);
   const [savedScores, setSavedScores] = useState<Map<string, number>>(new Map());
   const [allSleeping, setAllSleeping] = useState(true);
@@ -35,6 +39,21 @@ const DiceRoller: React.FC = () => {
 
   const [rollCount, setRollCount] = useState(0);
   const maxRollCount = 3;
+
+  // FSM 상태 관리
+  const [diceState, setDiceState] = useState<DiceState>('roll');
+  const [isRolling, setIsRolling] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // 게임 상태 관리
+  const [gamePhase, setGamePhase] = useState<GamePhase>('myturn');
+
+  // 상태에 따른 조건들
+  const canSelect = diceState === 'stop' && gamePhase === 'myturn';
+  const canRoll = diceState === 'stop' && rollCount < maxRollCount && gamePhase === 'myturn';
+  
+  // 디버깅용 로그
+  console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
 
   function getDynamicFixedPositions(n: number): THREE.Vector3[] {
     const spacing = 1.5;
@@ -49,14 +68,118 @@ const DiceRoller: React.FC = () => {
     return positions;
   }
 
+  // 상태 변경 함수들
+  const setRollingState = () => {
+    setDiceState('roll');
+    diceStateRef.current = 'roll';
+    setIsRolling(true);
+    setIsAnimating(false);
+  };
+
+  const setStopState = () => {
+    setDiceState('stop');
+    diceStateRef.current = 'stop';
+    setIsRolling(false);
+    setIsAnimating(false);
+  };
+
+  const setAnimatingState = () => {
+    setDiceState('animate');
+    diceStateRef.current = 'animate';
+    setIsRolling(false);
+    setIsAnimating(true);
+  };
+
+  // 게임 액션 처리 함수들
+  const handleGameAction = (action: GameAction) => {
+    console.log('🎮 Game Action:', action.type, action.payload);
+    
+    switch (action.type) {
+      case 'THROW_DICE':
+        console.log('📤 WebSocket: Sending dice throw action');
+        break;
+      case 'SELECT_DICE':
+        console.log('📤 WebSocket: Sending dice selection action');
+        break;
+      case 'SCORE_POINT':
+        console.log('📤 WebSocket: Sending score action');
+        setGamePhase('oppturn');
+        console.log('🔄 Game Phase: myturn -> oppturn');
+        break;
+      case 'START_TURN':
+        console.log('🔄 Game Phase: Starting new turn');
+        setGamePhase('myturn');
+        setRollCount(0);
+        break;
+      case 'END_TURN':
+        console.log('🔄 Game Phase: Ending turn');
+        break;
+    }
+  };
+
+
+
+  const createNewDice = () => {
+    // 기존 주사위 정리
+    if (diceArrayRef.current) {
+      diceArrayRef.current.forEach(dice => {
+        sceneRef.current!.remove(dice.mesh);
+        physicsWorldRef.current!.removeBody(dice.body);
+      });
+    }
+
+    // 새로운 주사위 생성
+    const newDice = generateDice(params.numberOfDice, sceneRef.current!, physicsWorldRef.current!, 1);
+    diceArrayRef.current = newDice;
+
+    // 선택 상태 초기화
+    setSelectedMeshes([]);
+    setSelectedDiceMap(new Map());
+    selectedCountRef.current = 0;
+    selectedMeshRefs.current = [];
+    selectedDiceMapRef.current.clear();
+
+    // 점수 초기화
+    setTopFaces([]);
+    setRollCount(0);
+    setAllSleeping(false);
+    setRollingState(); // 초기 상태를 roll로 설정
+
+    // 새로 생성된 주사위를 바로 던지기
+    setTimeout(() => {
+      scoredRef.current = false; // scored 초기화
+      diceArrayRef.current.forEach((d, i) => {
+        d.body.velocity.setZero();
+        d.body.angularVelocity.setZero();
+        d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
+        d.mesh.position.copy(d.body.position);
+        d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+        const threeQuat = d.mesh.quaternion;
+        d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
+        const force = 3 + 5 * Math.random();
+        d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
+        d.body.allowSleep = true;
+        d.body.wakeUp();
+      });
+      setRollCount(1);
+    }, 100); // 약간의 지연을 두어 생성이 완료된 후 던지기
+  };
+
   const throwDice = () => {
-    if (rollCount >= maxRollCount) return;
+    if (!canRoll) return;
 
     if (!scoreRef.current) return;
     scoreRef.current.innerHTML = '';
     
     // 점수판 초기화
     setTopFaces([]);
+    scoredRef.current = false; // 점수 계산 상태 초기화
+
+    // rolling 상태로 변경
+    setRollingState();
+
+    // 게임 액션 호출
+    handleGameAction({ type: 'THROW_DICE', payload: { rollCount: rollCount + 1 } });
 
     diceArrayRef.current.forEach((d, i) => {
       if (d.selected) return; 
@@ -80,8 +203,6 @@ const DiceRoller: React.FC = () => {
       d.body.wakeUp(); 
     });
 
-    // 이 setTimeout 로직은 그대로 유지해도 괜찮습니다.
-
     setRollCount(prev => prev + 1);
   };
 
@@ -97,34 +218,11 @@ const DiceRoller: React.FC = () => {
   const handleScoreClick = (category: string, score: number, diceArr :Dice[]) => {
     if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
     setSavedScores(prev => new Map(prev.set(category, score)));
-      setRollCount(1);
-      selectedMeshRefs.current = [];
-      selectedDiceMapRef.current.clear();
-      setSelectedMeshes([]);
-      setSelectedDiceMap(new Map());
-      selectedCountRef.current = 0;
-      setTopFaces([]);
+    // 게임 액션 호출
+    handleGameAction({ type: 'SCORE_POINT', payload: { category, score } });
 
-      diceArrayRef.current.forEach((d, i) => {
-        d.body.type = CANNON.Body.DYNAMIC;
-        d.body.allowSleep = true;
-        d.body.velocity.setZero();
-        d.body.angularVelocity.setZero();
-        d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
-        d.mesh.position.copy(d.body.position);
-        d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
-        d.body.quaternion.setFromEuler(
-          d.mesh.rotation.x,
-          d.mesh.rotation.y,
-          d.mesh.rotation.z
-        );
-        const force = 3 + 5 * Math.random();
-        d.body.applyImpulse(
-          new CANNON.Vec3(-force, force, 0),
-          new CANNON.Vec3(0, 0, 0.2)
-        );
-        d.body.wakeUp();
-      });
+    // 새로운 주사위 생성
+    createNewDice();
   };
 
   useEffect(() => {
@@ -219,8 +317,8 @@ const DiceRoller: React.FC = () => {
     diceArrayRef.current = newDice;
 
     
-    let scored = false;
-
+    scoredRef.current = false;
+    
     const render = () => {
       physicsWorld.fixedStep();
 
@@ -228,26 +326,27 @@ const DiceRoller: React.FC = () => {
       let allArrived = true;
 
       const speed = 0.3; // 한 프레임당 이동 거리
+      
       for (const dice of diceArrayRef.current) {
-        scored = false;
-        // 기존 위치/회전 복사
+        // 모든 주사위의 위치/회전 복사
         dice.mesh.position.copy(dice.body.position);
         dice.mesh.quaternion.copy(dice.body.quaternion);
 
-        // 🔍 targetPosition 체크
+        // 🔍 targetPosition 체크 (모든 주사위)
         if (dice.targetPosition) {
-          allArrived = false; // 아직 이동 중인 주사위 있음
-
           const current = dice.mesh.position;
           const target = dice.targetPosition;
           const dist = current.distanceTo(target);
 
           if (dist > 0.4) {
+            // 아직 이동 중
+            allArrived = false;
             const direction = new THREE.Vector3().subVectors(target, current).normalize();
             const move = direction.multiplyScalar(speed);
             dice.mesh.position.add(move);
             dice.body.position.copy(dice.mesh.position as any);
           } else {
+            // 목적지 도달
             dice.mesh.position.copy(target);
             dice.body.position.copy(new CANNON.Vec3(target.x, target.y, target.z));
             dice.targetPosition = undefined;
@@ -255,23 +354,59 @@ const DiceRoller: React.FC = () => {
           dice.body.quaternion.copy(dice.body.quaternion);
         }
 
-        // 💤 잠들었는지 체크
-        if (dice.body.sleepState !== CANNON.Body.SLEEPING) {
+        // 💤 잠들었는지 체크 (모든 주사위)
+        if (dice.selected) {
+          // 선택된 주사위는 STATIC 상태이므로 항상 "잠든" 상태로 간주
+        } else if (dice.body.sleepState !== CANNON.Body.SLEEPING) {
+          // 선택되지 않은 주사위는 물리 엔진의 sleep 상태 확인
           allSleepingLocal = false;
         }
-        setAllSleeping(allSleepingLocal);
+        
+        // 디버깅용 로그
+        if (diceState === 'roll') {
+          console.log("Dice", dice.id, "selected:", dice.selected, "sleepState:", dice.body.sleepState, "SLEEPING:", CANNON.Body.SLEEPING, "allSleepingLocal:", allSleepingLocal);
+        }
       }
 
-      // 점수 표시
-      if (allSleepingLocal && allArrived && !scored) { 
-        // 모든 주사위에 대해 점수 계산 (선택 여부 관계없이)
-        const allDice = diceArrayRef.current;
-        const faces = allDice.map(d => d.getScore());
-        setTopFaces(faces); // 상태 업데이트
-        if (scoreRef.current) {
-          scoreRef.current.innerHTML = faces.join(', ');
+      // 상태 업데이트
+      setAllSleeping(allSleepingLocal);
+
+      // FSM 상태 전환 로직
+      if (diceState === 'roll' && allSleepingLocal) {
+        // 굴리기 완료 -> stop 상태로 전환
+        console.log("Roll completed, transitioning to stop state");
+        setStopState();
+        // 점수 계산
+        if (!scoredRef.current) {
+          console.log("Calculating scores...");
+          const allDice = diceArrayRef.current;
+          const faces = allDice.map(d => d.getScore());
+          console.log("Calculated faces:", faces);
+          setTopFaces(faces);
+          if (scoreRef.current) {
+            scoreRef.current.innerHTML = faces.join(', ');
+          }
+          scoredRef.current = true;
+        } else {
+          console.log("Already scored, skipping score calculation");
         }
-        scored = true;
+      } else if (diceState === 'animate' && allArrived) {
+        // 애니메이션 완료 -> stop 상태로 전환
+        console.log("Animation completed, transitioning to stop state");
+        setStopState();
+      }
+      
+      // 디버깅용 로그
+      if (diceState === 'roll') {
+        console.log("Roll state - allSleepingLocal:", allSleepingLocal, "scoredRef.current:", scoredRef.current);
+      }
+      
+      // 디버깅용 로그
+      if (diceState === 'roll' && allSleepingLocal) {
+        console.log("Roll state - allSleepingLocal:", allSleepingLocal);
+      }
+      if (diceState === 'animate') {
+        console.log("Animate state - allArrived:", allArrived);
       }
 
       // 렌더링 반복
@@ -281,12 +416,12 @@ const DiceRoller: React.FC = () => {
 
 
     const initialThrow = () => {
-       if (rollCount >= maxRollCount) return;
-      scored = false;
+      if (rollCount >= maxRollCount) return;
+      scoredRef.current = false;
       if (!scoreResult) return;
       scoreResult.innerHTML = '';
+      
       diceArrayRef.current.forEach((d, i) => {
-        if (d.selected) return; // 선택된 주사위는 고정
         d.body.velocity.setZero();
         d.body.angularVelocity.setZero();
         d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
@@ -348,13 +483,12 @@ const DiceRoller: React.FC = () => {
         clickedDice.body.velocity.setZero();
         clickedDice.body.angularVelocity.setZero();
 
-
-        const original = clickedDice.stoppedPosition;
-
-        if (original) {
-          clickedDice.targetPosition = new THREE.Vector3(original.x, original.y, original.z);
+        // 원래 위치로 부드럽게 돌아가기
+        if (clickedDice.stoppedPosition) {
+          clickedDice.targetPosition = clickedDice.stoppedPosition.clone();
         }
-        // 저장해 둔 물리 시뮬레이션이 멈춘 위치/회전으로 복원
+
+        // 원래 회전으로 돌아가기
         if (clickedDice.stoppedQuaternion) {
           clickedDice.body.quaternion.copy(new CANNON.Quaternion(
             clickedDice.stoppedQuaternion.x,
@@ -362,10 +496,16 @@ const DiceRoller: React.FC = () => {
             clickedDice.stoppedQuaternion.z,
             clickedDice.stoppedQuaternion.w
           ));
+          clickedDice.mesh.quaternion.copy(clickedDice.stoppedQuaternion);
         }
+
+        // 상태 초기화 (targetPosition은 렌더 루프에서 처리 후 초기화됨)
+        clickedDice.stoppedPosition = undefined;
+        clickedDice.stoppedQuaternion = undefined;
+        
         clickedDice.body.type = CANNON.Body.DYNAMIC;
         clickedDice.body.allowSleep = true;
-        //clickedDice.body.wakeUp(); // 물리 시뮬레이션에 참여하도록 깨우기
+
         setSelectedMeshes(prev => prev.filter(m => m.uuid !== clickedDice.mesh.uuid));
         setSelectedDiceMap(prev => {
           const map = new Map(prev);
@@ -388,6 +528,12 @@ const DiceRoller: React.FC = () => {
         // 🎲 선택되지 않은 주사위를 클릭 → 선택된 위치로 이동
         console.log("Clicked on an unselected dice. Selecting it.");
 
+        // stop 상태일 때만 선택 가능
+        if (diceStateRef.current !== 'stop') {
+          console.log("Cannot select dice in current state. Current state:", diceStateRef.current, "canSelect:", canSelect);
+          return;
+        }
+
         // 주사위가 멈춰있을 때만 선택 가능하도록 (선택 시점의 최종 위치 저장)
         if (clickedDice.body.sleepState !== CANNON.Body.SLEEPING) {
           console.log("Dice is still moving, cannot select.");
@@ -397,6 +543,12 @@ const DiceRoller: React.FC = () => {
         clickedDice.selected = true;
         clickedDice.stoppedPosition = clickedDice.mesh.position.clone(); // 물리 시뮬레이션이 멈춘 위치 저장
         clickedDice.stoppedQuaternion = clickedDice.mesh.quaternion.clone(); // 물리 시뮬레이션이 멈춘 회전 저장
+
+        // 애니메이션 시작
+        setAnimatingState();
+
+        // 게임 액션 호출
+        handleGameAction({ type: 'SELECT_DICE', payload: { diceId: clickedDice.id } });
 
         // 물리 바디를 STATIC으로 변경하여 물리 시뮬레이션의 영향을 받지 않도록 함
         clickedDice.body.type = CANNON.Body.STATIC;
@@ -482,14 +634,14 @@ const DiceRoller: React.FC = () => {
         
         <button
           onClick={throwDice}
-          disabled={rollCount >= maxRollCount || !allSleeping}
+          disabled={!canRoll}
           className={`ml-4 px-4 py-2 rounded shadow text-white ${
-            rollCount >= maxRollCount || !allSleeping
+            !canRoll
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          Throw the Dice ({rollCount}/{maxRollCount})
+          Throw the Dice ({rollCount}/{maxRollCount}) - {diceState} [{gamePhase}]
         </button>
       </div> 
       {showResult && (
