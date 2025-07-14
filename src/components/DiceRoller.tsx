@@ -32,7 +32,7 @@ const DiceRoller: React.FC = () => {
   const [savedScores, setSavedScores] = useState<Map<string, number>>(new Map());
   const [allSleeping, setAllSleeping] = useState(true);
   const [showResult, setShowResult] = useState(false);
-  const unSelected_category = ["Ones","Twos", "Threes", "Choice", "Full House", "Little Straight"];
+  const unSelected_category: string[] = [];
   const totalCategories = Object.keys(calculateScores(diceArrayRef.current)).length;
   const selectableCategories = totalCategories - (unSelected_category?.length ?? 0);
   const [resultVisible, setResultVisible] = useState(false);
@@ -218,7 +218,6 @@ const DiceRoller: React.FC = () => {
   const handleScoreClick = (category: string, score: number, diceArr :Dice[]) => {
     if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
     setSavedScores(prev => new Map(prev.set(category, score)));
-
     // 게임 액션 호출
     handleGameAction({ type: 'SCORE_POINT', payload: { category, score } });
 
@@ -249,7 +248,7 @@ const DiceRoller: React.FC = () => {
     const ambientLight = new THREE.AmbientLight(0xffffff, 5);
     scene.add(ambientLight);
 
-    const topLight = new THREE.PointLight(0xffffff, 3);
+    const topLight = new THREE.PointLight(0xffffff, 1);
     topLight.position.set(0, 15, 0);
     topLight.castShadow = true;
     topLight.shadow.mapSize.width = 2048;
@@ -571,7 +570,6 @@ const DiceRoller: React.FC = () => {
             clickedDice.mesh.quaternion.z,
             clickedDice.mesh.quaternion.w
         ));
-
 
         setSelectedMeshes(prev => [...prev, clickedDice.mesh]);
         setSelectedDiceMap(prev => {

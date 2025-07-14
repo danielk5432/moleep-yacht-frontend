@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three-stdlib';
 import * as CANNON from 'cannon-es';
 
 export class Dice {
@@ -9,7 +10,7 @@ export class Dice {
   stoppedPosition?: THREE.Vector3;
   stoppedQuaternion?: THREE.Quaternion;
   targetPosition?: THREE.Vector3;
-  faceNumber: number[];
+  faceNumber: any[];
   meshOrder: number[];
   backgroundColor: string;
   borderColor: string;
@@ -33,7 +34,7 @@ export class Dice {
   }
 
   protected createDiceMesh(): THREE.Mesh {
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const geometry = new RoundedBoxGeometry(1, 1, 1, 5, 0.15); 
     const textures = this.createDiceTextures();
 
     const materials = textures.map(texture =>
@@ -61,7 +62,7 @@ export class Dice {
     const textures: THREE.Texture[] = [];
     const dotRadius = 10;
     const size = 100;
-    const borderWidth = 8;
+    const borderWidth = 6;
 
     // 기본 dotPositions (1,2,3,4,5,6 순서)
     const dotPositions = [
@@ -86,22 +87,35 @@ export class Dice {
       ctx.fillRect(0, 0, size, size);
 
       // 테두리 그리기
-      ctx.fillStyle = this.borderColor;
-      ctx.fillRect(0, 0, size, borderWidth); // 상단
-      ctx.fillRect(0, size - borderWidth, size, borderWidth); // 하단
-      ctx.fillRect(0, 0, borderWidth, size); // 좌측
-      ctx.fillRect(size - borderWidth, 0, borderWidth, size); // 우측
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = borderWidth;
+      ctx.strokeStyle = this.borderColor;
+      ctx.strokeRect(borderWidth / 2, borderWidth / 2, size - borderWidth, size - borderWidth);
 
-      // 점 그리기
-      ctx.fillStyle = this.dotColor;
-      const spacing = size / 4;
-      for (const [row, col] of orderedDotPositions[i]) {
-        ctx.beginPath();
-        ctx.arc(spacing * (col + 1), spacing * (row + 1), dotRadius, 0, Math.PI * 2);
-        ctx.fill();
+      const value = this.faceNumber[this.meshOrder[i] - 1];
+
+      if (typeof value === 'number') {
+        // 🔵 숫자 → dot 방식
+        ctx.fillStyle = this.dotColor;
+        const spacing = size / 4;
+        const dotPattern = dotPositions[value - 1];
+        for (const [row, col] of dotPattern) {
+          ctx.beginPath();
+          ctx.arc(spacing * (col + 1), spacing * (row + 1), dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (typeof value === 'string') {
+        // 🟡 문자열 → 텍스트 방식
+        ctx.fillStyle = this.dotColor;
+        ctx.font = `${size * 0.6}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(value, size / 2, size / 2);
       }
 
-      textures.push(new THREE.CanvasTexture(canvas));
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      textures.push(texture);
     }
 
     return textures;
