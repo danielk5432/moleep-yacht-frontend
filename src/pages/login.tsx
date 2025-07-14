@@ -45,7 +45,10 @@ const LoginPage: React.FC = () => {
       // 사용자 정보 가져오기
       const userData = await api.getProfile(token);
       setUser(userData);
-      
+      // 닉네임이 있으면 localStorage에 저장
+      if (userData.nickname) {
+        localStorage.setItem('nickname', userData.nickname);
+      }
       // 메인 페이지로 리다이렉트
       router.push('/');
     } catch (error) {
