@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState} from 'react';
+import { useRouter } from 'next/router';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { Dice } from '../types/dice';
@@ -8,11 +9,31 @@ import { generateDice } from '../utils/generateDice';
 import { getTopFaceNumber } from '../utils/getTopFaceNumber';
 import ScoreTable from './ScoreTable';
 import { calculateScores } from '../utils/calculateScores';
-import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
+import { DiceState, GameState, GamePhase, GameAction, MatchData } from '../types/game';
 import { all } from 'three/tsl';
+import { io, Socket } from 'socket.io-client';
+
+interface DiceRollerProps {
+  multiplayer?: boolean;
+  gameParams?: {
+    roomId: string;
+    myTurn: string;
+    opponentNickname: string;
+    playerId: string;
+    opponentId: string;
+  };
+  socket?: Socket | null;
+  onGameAction?: (action: GameAction) => void;
+}
 
 
-const DiceRoller: React.FC = () => {
+const DiceRoller: React.FC<DiceRollerProps> = ({ 
+  multiplayer = false, 
+  gameParams, 
+  socket: externalSocket, 
+  onGameAction 
+}) => {
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scoreRef = useRef<HTMLSpanElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer>(null);
@@ -45,15 +66,26 @@ const DiceRoller: React.FC = () => {
   const [isRolling, setIsRolling] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  // 멀티플레이어 상태
+  const [socket, setSocket] = useState<Socket | null>(externalSocket || null);
+  const [matchData, setMatchData] = useState<MatchData | null>(null);
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchMessage, setMatchMessage] = useState('');
+
   // 게임 상태 관리
-  const [gamePhase, setGamePhase] = useState<GamePhase>('myturn');
+  const [gamePhase, setGamePhase] = useState<GamePhase>(multiplayer ? 'waiting' : 'myturn');
 
   // 상태에 따른 조건들
   const canSelect = diceState === 'stop' && gamePhase === 'myturn';
   const canRoll = diceState === 'stop' && rollCount < maxRollCount && gamePhase === 'myturn';
   
+  // 멀티플레이어 모드에서는 턴 체크 추가
+  const isMyTurn = multiplayer ? gameParams?.myTurn === 'true' : true;
+  const canSelectMultiplayer = canSelect && isMyTurn;
+  const canRollMultiplayer = canRoll && isMyTurn;
+  
   // 디버깅용 로그
-  console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
+  console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount, "multiplayer:", multiplayer, "isMyTurn:", isMyTurn);
 
   function getDynamicFixedPositions(n: number): THREE.Vector3[] {
     const spacing = 1.5;
@@ -90,19 +122,111 @@ const DiceRoller: React.FC = () => {
     setIsAnimating(true);
   };
 
+  // 매칭 시스템 함수들
+  const initializeSocket = () => {
+    console.log('🔌 Initializing socket connection...');
+    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8443', {
+      transports: ['websocket', 'polling'],
+      path: '/api/websocket',
+      forceNew: true,
+    });
+
+    newSocket.on('connect', () => {
+      console.log('🔌 Socket connected:', newSocket.id);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('🔌 Socket connection error:', error);
+    });
+
+    newSocket.on('matchStatus', (data: { status: string; message: string }) => {
+      console.log('📡 Match status:', data);
+      setMatchMessage(data.message);
+      if (data.status === 'waiting') {
+        setIsMatching(true);
+        setGamePhase('matching');
+      }
+    });
+
+    newSocket.on('matchFound', (data: MatchData) => {
+      console.log('🎯 Match found:', data);
+      setMatchData(data);
+      setIsMatching(false);
+      setGamePhase(data.myTurn ? 'myturn' : 'oppturn');
+      setMatchMessage(`매칭 성공! ${data.opponent.nickname}님과 게임을 시작합니다.`);
+    });
+
+    newSocket.on('gameAction', (action: any) => {
+      console.log('📥 Received game action:', action);
+      handleGameAction(action);
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('🔌 Socket disconnected');
+    });
+
+    setSocket(newSocket);
+    return newSocket;
+  };
+
+  const requestMatch = () => {
+    console.log('🎯 Requesting match...');
+    console.log('Socket state:', socket ? 'connected' : 'not connected');
+    
+    if (!socket) {
+      console.error('❌ Socket not connected!');
+      return;
+    }
+    
+    const playerId = localStorage.getItem('userId') || `player_${Date.now()}`;
+    const nickname = localStorage.getItem('nickname') || 'Anonymous';
+    
+    console.log('🎯 Sending match request with:', { playerId, nickname });
+    socket.emit('requestMatch', { playerId, nickname });
+    setIsMatching(true);
+    setGamePhase('matching');
+    setMatchMessage('매칭 중입니다...');
+  };
+
+  const cancelMatch = () => {
+    if (!socket) return;
+    
+    const playerId = localStorage.getItem('userId') || `player_${Date.now()}`;
+    socket.emit('cancelMatch', { playerId });
+    setIsMatching(false);
+    setGamePhase('matching');
+    setMatchMessage('');
+  };
+
   // 게임 액션 처리 함수들
   const handleGameAction = (action: GameAction) => {
     console.log('🎮 Game Action:', action.type, action.payload);
     
+    // 멀티플레이어 모드에서는 외부 핸들러 사용
+    if (multiplayer && onGameAction) {
+      onGameAction(action);
+      return;
+    }
+    
+    // 싱글플레이어 모드에서는 기존 로직 사용
     switch (action.type) {
       case 'THROW_DICE':
         console.log('📤 WebSocket: Sending dice throw action');
+        if (socket && matchData) {
+          socket.emit('gameAction', { roomId: matchData.roomId, action });
+        }
         break;
       case 'SELECT_DICE':
         console.log('📤 WebSocket: Sending dice selection action');
+        if (socket && matchData) {
+          socket.emit('gameAction', { roomId: matchData.roomId, action });
+        }
         break;
       case 'SCORE_POINT':
         console.log('📤 WebSocket: Sending score action');
+        if (socket && matchData) {
+          socket.emit('gameAction', { roomId: matchData.roomId, action });
+        }
         setGamePhase('oppturn');
         console.log('🔄 Game Phase: myturn -> oppturn');
         break;
@@ -225,6 +349,20 @@ const DiceRoller: React.FC = () => {
     // 새로운 주사위 생성
     createNewDice();
   };
+
+  // 소켓 초기화 (싱글플레이어 모드에서만)
+  useEffect(() => {
+    if (!multiplayer) {
+      const newSocket = initializeSocket();
+      
+      // 컴포넌트 언마운트 시 소켓 정리
+      return () => {
+        if (newSocket) {
+          newSocket.disconnect();
+        }
+      };
+    }
+  }, [multiplayer]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -609,6 +747,16 @@ const DiceRoller: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen">
+      {/* 홈 버튼 */}
+      <div className="absolute top-4 left-4 z-20">
+        <button
+          onClick={() => router.push('/')}
+          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+        >
+          🏠 홈으로
+        </button>
+      </div>
+      
       {/* 시뮬레이터 canvas 전체화면 */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
         {/* <h1 className="text-4xl font-bold text-black drop-shadow-lg">YACHT GAME</h1> */}
@@ -623,6 +771,46 @@ const DiceRoller: React.FC = () => {
         <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
       </div>
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
+      
+      {/* 매칭 상태 UI (싱글플레이어 모드에서만) */}
+      {!multiplayer && gamePhase === 'matching' && (
+        <div className="absolute inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-8 text-center shadow-xl">
+            <h2 className="text-2xl font-bold mb-4">🎮 멀티플레이어 매칭</h2>
+            {!isMatching ? (
+              <div>
+                <p className="text-gray-600 mb-4">다른 플레이어와 매칭하여 게임을 시작하세요!</p>
+                <button
+                  onClick={requestMatch}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold"
+                >
+                  매칭 시작
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600 mb-4">{matchMessage}</p>
+                <button
+                  onClick={cancelMatch}
+                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold"
+                >
+                  매칭 취소
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 게임 정보 표시 */}
+      {matchData && gamePhase !== 'matching' && (
+        <div className="absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium">
+          <div>상대방: {matchData.opponent.nickname}</div>
+          <div>내 턴: {gamePhase === 'myturn' ? '✅' : '❌'}</div>
+        </div>
+      )}
+
       <div className="absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium">
         선택된 주사위: {selectedMeshes.length}개
       </div>
@@ -636,14 +824,14 @@ const DiceRoller: React.FC = () => {
         
         <button
           onClick={throwDice}
-          disabled={!canRoll}
+          disabled={multiplayer ? !canRollMultiplayer : !canRoll}
           className={`ml-4 px-4 py-2 rounded shadow text-white ${
-            !canRoll
+            (multiplayer ? !canRollMultiplayer : !canRoll)
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          Throw the Dice ({rollCount}/{maxRollCount}) - {diceState} [{gamePhase}]
+          Throw the Dice ({rollCount}/{maxRollCount}) - {diceState} [{gamePhase}] {multiplayer && !isMyTurn ? '(Not your turn)' : ''}
         </button>
       </div> 
       {showResult && (
