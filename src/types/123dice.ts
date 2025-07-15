@@ -7,10 +7,12 @@ export class Dice123 extends Dice {
     super(id);
     // meshOrder: [1, 6, 2, 5, 3, 4] 순서에 맞춰서 faceNumber 설정
     // 각 위치에 123을 순환해서 배치
+    this.dicetype = 'dice123'; // 타입 설정
     this.faceNumber = [1, 2, 3, 3, 2 ,1]; // meshOrder 순서에 맞춘 123123
     this.backgroundColor = '#EA2027'; //배경
     this.borderColor = '#EA2027'; // 테두리
     this.dotColor = '#ffffff'; // 검은색 점
+    this.rarity = 'bad'; // 타입 설정
     
     // 새로운 텍스처로 메시 재생성
     this.mesh = this.createDiceMesh();
