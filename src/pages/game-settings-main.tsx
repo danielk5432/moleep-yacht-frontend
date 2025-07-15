@@ -49,6 +49,7 @@ const GameSettingsPage: React.FC = () => {
           <div
             key={cat}
             onClick={() => toggleSelect(cat)}
+            
             className={`relative w-36 h-14 flex items-center justify-center rounded-xl border text-sm font-semibold cursor-pointer select-none transition-all
               ${selectedState
                 ? 'border-blue-500 bg-blue-50 text-blue-600'
@@ -74,7 +75,7 @@ const GameSettingsPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-indigo-50">
+    <div className="min-h-screen flex items-center justify-center bg-indigo-50" style={{ fontFamily: 'DungGeunMo' }}>
       <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-xl">
         <h2 className="text-2xl font-bold mb-4 text-center">게임 라운드 설정</h2>
         <p className="text-gray-600 text-sm mb-6 text-center">※ <strong>Yacht</strong>, <strong>Choice</strong>는 필수 항목입니다.</p>
@@ -93,7 +94,7 @@ const GameSettingsPage: React.FC = () => {
               key={cat}
               className="px-6 py-3 rounded-xl border border-blue-500 bg-blue-50 text-blue-600 text-sm font-medium"
             >
-              {cat} (필수)
+              {cat}(Fixed)
             </div>
           ))}
         </div>

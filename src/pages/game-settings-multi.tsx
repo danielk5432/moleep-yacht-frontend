@@ -40,7 +40,7 @@ const GoodDiceSelectionPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-yellow-50">
+    <div className="min-h-screen flex items-center justify-center bg-yellow-50" style={{ fontFamily: 'DungGeunMo' }}>
       <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-xl">
         <h2 className="text-2xl font-bold mb-4 text-center">주사위 구성 선택</h2>
         <p className="text-sm text-gray-600 text-center mb-6">※ 총 4개의 주사위를 선택해야 합니다.</p>

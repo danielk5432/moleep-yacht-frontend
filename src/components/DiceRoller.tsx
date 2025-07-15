@@ -5,11 +5,9 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { Dice } from '../types/dice';
 import { generateDice } from '../utils/generateDice';
-import { getTopFaceNumber } from '../utils/getTopFaceNumber';
 import DiceRoulette from './DiceRoulette';
 import ScoreTable from './ScoreTable';
 import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
-import { all } from 'three/tsl';
 
 
 type TurnPhase = 'roulette' | 'rolling' | 'waitingResult';
@@ -32,6 +30,10 @@ const DiceRoller: React.FC = () => {
   const [savedScores, setSavedScores] = useState<Map<string, number>>(new Map());
   const [allSleeping, setAllSleeping] = useState(true);
   const [showResult, setShowResult] = useState(false);
+  const [power, setPower] = useState(0); // 힘 값
+  const powerRef = useRef(0);            // 애니메이션 도중 최신값 추적
+  const directionRef = useRef<1 | -1>(1);
+  const animationRef = useRef<number | null>(null);
   
   const totalCategories = 12;
   
@@ -97,6 +99,50 @@ const DiceRoller: React.FC = () => {
     setIsAnimating(true);
   };
 
+  const updatePower = () => {
+    const speed = 0.015; // 변화 속도 조절
+
+    powerRef.current += speed * directionRef.current;
+
+    // 방향 전환 조건
+    if (powerRef.current >= 1) {
+      powerRef.current = 1;
+      directionRef.current = -1;
+    } else if (powerRef.current <= 0) {
+      powerRef.current = 0;
+      directionRef.current = 1;
+    }
+
+    setPower(powerRef.current);
+    animationRef.current = requestAnimationFrame(updatePower);
+  };
+
+  const startCharging = () => {
+    if (animationRef.current === null) {
+      animationRef.current = requestAnimationFrame(updatePower);
+    }
+  };
+
+
+
+const stopChargingAndThrow = () => {
+  if (animationRef.current) {
+    cancelAnimationFrame(animationRef.current);
+    animationRef.current = null;
+  }
+
+  const finalPower = powerRef.current;
+  console.log('Final throw power:', finalPower);
+  throwDice(finalPower);
+
+  // 초기화
+  powerRef.current = 0;
+  directionRef.current = 1;
+  
+  setPower(0);
+};
+
+
   // 게임 액션 처리 함수들
   const handleGameAction = (action: GameAction) => {
     console.log('🎮 Game Action:', action.type, action.payload);
@@ -130,7 +176,7 @@ const DiceRoller: React.FC = () => {
     }, 1000);
   };
 
-  const throwDice = () => {
+  const throwDice = (power: number) => {
     if (!canRoll) return;
 
     if (!scoreRef.current) return;
@@ -139,6 +185,11 @@ const DiceRoller: React.FC = () => {
     // 점수판 초기화
     setTopFaces([]);
 
+    const baseForce = 10; // 최소 힘
+    const maxExtraForce = 12; // 추가 최대 힘
+
+    const force = baseForce + power * maxExtraForce;
+
     scoredRef.current = false; // 점수 계산 상태 초기화
 
     // rolling 상태로 변경
@@ -146,7 +197,7 @@ const DiceRoller: React.FC = () => {
 
     // 게임 액션 호출
     handleGameAction({ type: 'THROW_DICE', payload: { rollCount: rollCount + 1 } });
-
+    let randDir = Math.random() * Math.PI * 2; // 0~2π 사이의 무작위 방향
     diceArrayRef.current.forEach((d, i) => {
       if (d.selected) return; 
 
@@ -157,11 +208,11 @@ const DiceRoller: React.FC = () => {
       d.body.angularVelocity.setZero();
       d.mesh.position.copy(d.body.position as any);
       const impulse = new CANNON.Vec3(
-        (Math.random() - 0.5) * 2,  // X 방향: 약간의 흔들림
-        20 + Math.random() * 5,     // Y 방향: 위쪽 강한 충격
-        (Math.random() - 0.5) * 2   // Z 방향: 약간의 흔들림
+        (Math.random() - 0.5) * force/4,  // X 방향: 약간의 흔들림
+        force,     // Y 방향: 위쪽 강한 충격
+        (Math.random() - 0.5) * force/4   // Z 방향: 약간의 흔들림
       );
-      const contactPoint = new CANNON.Vec3(0, 0, 0.2); // 중심에서 약간 위쪽
+      const contactPoint = new CANNON.Vec3(Math.sin(randDir) * 0.2, 0, Math.cos(randDir) * 0.2); // 중심에서 약간 위쪽
       const threeQuat = d.mesh.quaternion;
       d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
       d.body.applyImpulse(impulse, contactPoint);
@@ -215,9 +266,25 @@ const DiceRoller: React.FC = () => {
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    const isPortrait = window.innerHeight > window.innerWidth;
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight - 100), 0.1, 300);
-    camera.position.set(0, 15, 0);
-    camera.up.set(0, 0, -1);
+
+    if (isPortrait) {
+      // 세로가 더 길 경우 (모바일 세로 모드 등)
+      // 1. 카메라를 조금 뒤로 이동 (y값을 15 -> 20으로 증가)
+      camera.position.set(0, 20, 0);
+      
+      // 2. 시계방향 90도 회전 (up 벡터를 변경)
+      // 기존 up이 (0,0,-1) 이었으므로, 시계방향 90도 회전은 up이 (-1,0,0)을 향하게 합니다.
+      camera.up.set(-1, 0, 0); 
+      
+    } else {
+      // 가로가 더 길 경우 (기존 설정)
+      camera.position.set(0, 15, 0);
+      camera.up.set(0, 0, -1);
+    }
+
+    // 공통적으로 바라볼 지점 설정
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
@@ -634,8 +701,12 @@ const DiceRoller: React.FC = () => {
   const bonus = upperSum >= bonusThreshold ? 35 : 0;
   const totalScore = Array.from(savedScores.values()).reduce((a, b) => a + b, 0) + bonus;
 
+  const selectedTopFaces = Array.from(selectedDiceMap.values())
+  .map(dice => dice.getScore())
+  .filter(num => num !== undefined)
+
   return (
-    <div className="relative w-full h-screen">
+    <div className="relative w-full h-screen" style={{ fontFamily: 'DungGeunMo' }}>
       {/* 룰렛 오버레이 */}
       {turnPhase === 'roulette' && (
         !showResult && (
@@ -645,15 +716,14 @@ const DiceRoller: React.FC = () => {
       ))}
       {/* 시뮬레이터 canvas 전체화면 */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-        {/* <h1 className="text-4xl font-bold text-black drop-shadow-lg">YACHT GAME</h1> */}
         <img
-          src="/YyachTiFy.png"
+          src="/images/YyachTiFy.png"
           alt="Yacht Game Logo"
-          className="h-35 object-contain drop-shadow-lg"
+          className="mx-auto h-20 sm:h-28 md:h-32 object-contain drop-shadow-lg my-4"
           style={{ maxWidth: '300px' }}
         />
       </div>
-      <div className="absolute right-4 top-4 z-20">
+      <div className="absolute right-4 top-4 z-20 hidden">
         <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
       </div>
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
@@ -666,19 +736,34 @@ const DiceRoller: React.FC = () => {
         </div>
       )}
       {/* 점수 및 버튼 (optional) */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 text-center">
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center overflow-hidden">
+        
         <button
-          onClick={throwDice}
+          onMouseDown={startCharging}
+          onMouseUp={stopChargingAndThrow}
+          onTouchStart={startCharging}
+          onTouchEnd={stopChargingAndThrow}
           disabled={turnPhase !== 'rolling' || !canRoll}
-          className={`ml-4 px-4 py-2 rounded shadow text-white ${
-            !canRoll
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-500 hover:bg-blue-600'
+          className={`px-4 py-2 rounded shadow text-white text-[20px] ${
+            !canRoll ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          Throw the Dice ({rollCount}/{maxRollCount})
+          Throw Dice ({rollCount}/{maxRollCount})
         </button>
-      </div> 
+
+        <div className='h-2'></div>
+
+        <div className="w-full max-w-[200px] h-6 bg-gray-50 rounded mt-2">
+          <div
+            className="h-6 rounded"
+            style={{
+              width: `${power * 100}%`,
+              background: 'linear-gradient(to right, #FFC312, #EA2027)',
+            }}
+          />
+        </div>
+        
+      </div>
       {showResult && (
         <div
           className={`fixed inset-0 flex flex-col items-center justify-center z-50 transition-opacity duration-700 ${resultVisible ? 'opacity-100' : 'opacity-0'}`}

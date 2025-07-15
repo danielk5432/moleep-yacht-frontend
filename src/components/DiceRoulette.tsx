@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 const Wheel = dynamic(
@@ -35,29 +35,40 @@ const Wheel = dynamic(
     { option: 'EvenDice', image: { uri: '/images/even_dice.png', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } }, 
   ];
   // 구성
-  const data = [
-    ...getRandomItems(good_data, 2),
-    ...getRandomItems(bad_data, 1),
-    ...getRandomItems(common_data, 3),
-  ];
+
+  function generateData() {
+    return [
+      ...getRandomItems(good_data, 2),
+      ...getRandomItems(bad_data, 1),
+      ...getRandomItems(common_data, 3),
+    ];
+  }
 
 interface DiceRouletteProps {
   onResult: (result: string) => void;
 }
 
 const DiceRoulette: React.FC<DiceRouletteProps> = ({ onResult }) => {
+  const [data, setData] = useState(() => generateData());
   const [mustSpin, setMustSpin] = useState(false);
   const [prizeNumber, setPrizeNumber] = useState(0);
 
   // 페이지 진입 시 자동 룰렛 돌리기
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const newPrizeNumber = Math.floor(Math.random() * data.length);
-      setPrizeNumber(newPrizeNumber);
+    const prizeTimer = setTimeout(() => {
+    const newPrizeNumber = Math.floor(Math.random() * data.length);
+    setPrizeNumber(newPrizeNumber);
+
+    // 약간의 멈춤 후 spin 시작
+    const spinTimer = setTimeout(() => {
       setMustSpin(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
+    }, 300); // 0.3초 멈췄다가 spin
+
+    return () => clearTimeout(spinTimer);
+  }, 500); // 0.5초 후에 prize 결정
+
+  return () => clearTimeout(prizeTimer);
+}, []);
 
   return (
     <div
