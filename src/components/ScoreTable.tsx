@@ -29,12 +29,31 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
 
   
   const upperCategories = ['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes'];
-    const upperSum = upperCategories.reduce((sum, cat) => {
-    // 저장된 점수 있으면 그 값, 없으면 0
+
+  const upperCategoryMax = {
+    Ones: 3,
+    Twos: 6,
+    Threes: 9,
+    Fours: 12,
+    Fives: 15,
+    Sixes: 18,
+  };
+
+  // 보너스 대상 카테고리만 필터링
+  const availableUpper = upperCategories.filter(cat => !unSelected_category.includes(cat));
+
+  // 현재 점수 합
+  const upperSum = availableUpper.reduce((sum, cat) => {
     return sum + (savedScores.get(cat) ?? 0);
-    }, 0);
-    const bonus = upperSum >= 63 ? 35 : 0;
-    const total = Array.from(savedScores.values()).reduce((a, b) => a + b, 0) + bonus;
+  }, 0);
+
+  // 기준 점수 합
+  const bonusThreshold = availableUpper.reduce((sum, cat) => {
+    return sum + upperCategoryMax[cat as keyof typeof upperCategoryMax];
+  }, 0);
+
+  const bonus = upperSum >= bonusThreshold ? 35 : 0;
+  const total = Array.from(savedScores.values()).reduce((a, b) => a + b, 0) + bonus;
 
   return (
     <div className="max-w-md mx-auto bg-white rounded-xl shadow-md p-4">
@@ -79,7 +98,7 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
           <hr className="col-span-2 border-gray-400" />
           <div className="font-medium text-gray-700">+Bonus</div>
           <div className={`font-bold text-right ${bonus === 0 ? 'text-gray-400' : 'text-red-500'}`}>
-            {bonus > 0 ? `${bonus} 🎉` : '-'}
+            {bonus > 0 ?  ` 🎉${bonus} ` : '-'}
           </div>
           <hr className="col-span-2 border-gray-400" />
         </>

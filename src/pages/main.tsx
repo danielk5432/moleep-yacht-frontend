@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { api } from '../utils/api';
+import Image from 'next/image';
 
 interface User {
   id: string;
@@ -127,45 +128,62 @@ const MainPage: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            야추 게임에 오신 것을 환영합니다!
+            Welcome to Yachtify!
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            {user?.nickname || user?.name}님, 즐거운 게임 되세요!
+            Have FUN, {user?.nickname || user?.name}!
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* 게임 카드 */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🎲</span>
+        
+
+          <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow flex flex-col items-center  min-w-[200px] min-h-[400px]">
+            {/* 상단: 아이콘, 제목, 설명 */}
+            <div className="flex flex-col items-center gap-4 mt-16 mb-auto">
+              <div className="w-30 h-30 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Image
+                  src="/images/dice_only.png"   // ✅ public/images/dice.png 에 있어야 함
+                  alt="VS"
+                  width={100}
+                  height={100}
+                  className="object-contain"
+                />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">야추 게임</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Yacht 게임</h3>
               <p className="text-gray-600 mb-6">
-                클래식한 야추 게임을 즐겨보세요!
+                클래식한 Yacht 게임을 즐겨보세요!
               </p>
               <Link
-                href="/game-settings"
-                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                href="/game-settings-main"
+                className="inline-block px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
               >
-                게임 시작
+                게임시작
               </Link>
             </div>
           </div>
 
+
           {/* 멀티플레이 카드 */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🤝</span>
+          <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow flex flex-col items-center  min-w-[200px] min-h-[400px]">
+            {/* 상단: 아이콘, 제목, 설명 */}
+            <div className="flex flex-col items-center gap-4 mt-16 mb-auto">
+              <div className="w-30 h-30 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Image
+                  src="/images/vs.png"   // ✅ public/images/dice.png 에 있어야 함
+                  alt="VS"
+                  width={100}
+                  height={100}
+                  className="object-contain"
+                />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">멀티플레이</h3>
               <p className="text-gray-600 mb-6">
-                실시간 1:1 매칭으로 친구와 대결하세요!
+                실시간 매칭으로 친구와 대결하세요!
               </p>
               <Link
-                href="/multiplayer/match"
+                href="/game-settings-multi"
                 className="inline-block px-6 py-3 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
               >
                 멀티플레이 매칭
@@ -174,10 +192,17 @@ const MainPage: React.FC = () => {
           </div>
 
           {/* 랭킹 카드 */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🏆</span>
+         <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow flex flex-col items-center min-w-[200px] min-h-[400px]">
+            {/* 상단: 아이콘, 제목, 설명 */}
+            <div className="flex flex-col items-center gap-4 mt-16 mb-auto">
+              <div className="w-30 h-30 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <Image
+                  src="/images/rank.png"   // ✅ public/images/dice.png 에 있어야 함
+                  alt="VS"
+                  width={75}
+                  height={75}
+                  className="object-contain"
+                />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">랭킹</h3>
               <p className="text-gray-600 mb-6">

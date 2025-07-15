@@ -20,15 +20,12 @@ const DiceRoller: React.FC = () => {
   const rendererRef = useRef<THREE.WebGLRenderer>(null);
   const sceneRef = useRef<THREE.Scene>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
-  const diceMeshRef = useRef<THREE.Mesh>(null);
   const physicsWorldRef = useRef<CANNON.World>(null);
   const diceArrayRef = useRef<Dice[]>([]);
   const [selectedMeshes, setSelectedMeshes] = useState<THREE.Mesh[]>([]);
   const [selectedDiceMap, setSelectedDiceMap] = useState<Map<string, Dice>>(new Map());
   const selectedCountRef = useRef(0); // 선택된 주사위 개수 추적
-  const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
   const selectedDiceMapRef = useRef<Map<string, Dice>>(new Map());
-  const [unselectedCategories, setUnselectedCategories] = useState<string[]>([]);
   const scoredRef = useRef(false); // 점수 계산 상태 추적
   const diceStateRef = useRef<DiceState>('roll'); // 현재 상태 추적
   const [topFaces, setTopFaces] = useState<number[]>([]);
@@ -125,51 +122,6 @@ const DiceRoller: React.FC = () => {
     }
   };
 
-  const createNewDice = () => {
-    // 기존 주사위 정리
-    if (diceArrayRef.current) {
-      diceArrayRef.current.forEach(dice => {
-        sceneRef.current!.remove(dice.mesh);
-        physicsWorldRef.current!.removeBody(dice.body);
-      });
-    }
-
-    // 새로운 주사위 생성
-    const newDice = generateDice(params.numberOfDice, sceneRef.current!, physicsWorldRef.current!, 0);
-    diceArrayRef.current = newDice;
-
-    // 선택 상태 초기화
-    setSelectedMeshes([]);
-    setSelectedDiceMap(new Map());
-    selectedCountRef.current = 0;
-    selectedMeshRefs.current = [];
-    selectedDiceMapRef.current.clear();
-
-    // 점수 초기화
-    setTopFaces([]);
-    setRollCount(1);
-    setAllSleeping(false);
-    setRollingState(); // 초기 상태를 roll로 설정
-
-    // 새로 생성된 주사위를 바로 던지기
-    setTimeout(() => {
-      scoredRef.current = false; // scored 초기화
-      diceArrayRef.current.forEach((d, i) => {
-        d.body.velocity.setZero();
-        d.body.angularVelocity.setZero();
-        d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
-        d.mesh.position.copy(d.body.position);
-        d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
-        const threeQuat = d.mesh.quaternion;
-        d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
-        const force = 3 + 5 * Math.random();
-        d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
-        d.body.allowSleep = true;
-        d.body.wakeUp();
-      });
-    }, 100); // 약간의 지연을 두어 생성이 완료된 후 던지기
-  };
-
   const handleRouletteResult = (result: string) => {
     console.log('룰렛 결과:', result);
     setRouletteResult(result);
@@ -186,8 +138,6 @@ const DiceRoller: React.FC = () => {
     
     // 점수판 초기화
     setTopFaces([]);
-    setSelectedDiceMap(new Map());
-    selectedCountRef.current = 0;
 
     scoredRef.current = false; // 점수 계산 상태 초기화
 
@@ -349,7 +299,7 @@ const DiceRoller: React.FC = () => {
       }else if (rouletteResult === 'ConstantDice'){
         number = Math.floor(Math.random() * (8 - 3 + 1)) + 3;
       }else if (rouletteResult === 'RiskDice'){
-        numberOfDice = Math.random() < 0.5 ? 9 : 10;
+        number = Math.random() < 0.5 ? 9 : 10;
       }else if (rouletteResult === 'OddDice'){
         number = 11;
       }else if (rouletteResult === 'EvenDice'){
@@ -657,6 +607,33 @@ const DiceRoller: React.FC = () => {
       }
     }, [showResult]);
 
+   const upperCategories = ['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes'];
+
+  const upperCategoryMax = {
+    Ones: 3,
+    Twos: 6,
+    Threes: 9,
+    Fours: 12,
+    Fives: 15,
+    Sixes: 18,
+  };
+
+  // 보너스 대상 카테고리만 필터링
+  const availableUpper = upperCategories.filter(cat => !unSelected_category.includes(cat));
+
+  // 현재 점수 합
+  const upperSum = availableUpper.reduce((sum, cat) => {
+    return sum + (savedScores.get(cat) ?? 0);
+  }, 0);
+
+  // 기준 점수 합
+  const bonusThreshold = availableUpper.reduce((sum, cat) => {
+    return sum + upperCategoryMax[cat as keyof typeof upperCategoryMax];
+  }, 0);
+
+  const bonus = upperSum >= bonusThreshold ? 35 : 0;
+  const totalScore = Array.from(savedScores.values()).reduce((a, b) => a + b, 0) + bonus;
+
   return (
     <div className="relative w-full h-screen">
       {/* 룰렛 오버레이 */}
@@ -713,7 +690,7 @@ const DiceRoller: React.FC = () => {
             <div className="text-2xl font-bold mb-4">🎉 게임 종료!</div>
             <div className="text-lg mb-2">Total 점수</div>
             <div className="text-4xl font-extrabold text-blue-600">
-              {Array.from(savedScores.values()).reduce((a, b) => a + b, 0)}
+              {totalScore}
             </div>
           </div>
         </div>
