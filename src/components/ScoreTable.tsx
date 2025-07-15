@@ -4,9 +4,10 @@
 import React from 'react';
 import { calculateScores } from '../utils/calculateScores';
 import { Dice } from '../types/dice';
+import { DiceWild } from '../types/wilddice';
 
 interface ScoreTableProps {
-  dice: number[];
+  dice: (number|string)[];
   onScoreClick: (category: string, score: number, diceArr: Dice[]) => void;
   savedScores: Map<string, number>;
   unSelected_category?: string[];
@@ -14,17 +15,19 @@ interface ScoreTableProps {
 
 const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores, unSelected_category = []}) => {
   // Create mock Dice objects from the number array
-  const mockDice: Dice[] = dice.map((value, index) => {
-    const mockDice = new Dice(index);
+  const mockDice: Dice[] = dice.map((value: number | string, index: number) => {
+    const mockDice =
+    value === '⭐️'
+      ? new DiceWild(index)
+      : new Dice(index);
     // Override getScore to return the provided value
-    mockDice.getScore = () => value;
+    mockDice.getScore = () => typeof value === 'number' ? value : 0; // Assuming 0 for non-number values
     return mockDice;
   });
 
   const scores = calculateScores(mockDice);
 
   
-
   const upperCategories = ['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes'];
     const upperSum = upperCategories.reduce((sum, cat) => {
     // 저장된 점수 있으면 그 값, 없으면 0
@@ -82,7 +85,6 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
         </>
       )}
     </React.Fragment>
-    
   );
 })}
 
@@ -95,5 +97,4 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
 
   );
 };
-
 export default ScoreTable;

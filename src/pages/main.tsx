@@ -79,9 +79,15 @@ const MainPage: React.FC = () => {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">🎲 Yacht Game</h1>
+             <Link href="/">
+              <img
+                src="/YyachTify.png"
+                alt="Yacht Game Logo"
+                className="h-20 w-auto object-contain"
+              />
+            </Link>
             </div>
             {user && (
               <div className="flex items-center space-x-4">
@@ -91,11 +97,22 @@ const MainPage: React.FC = () => {
                     alt={user.name}
                     className="w-8 h-8 rounded-full"
                   />
-                  <span className="text-gray-700 font-medium">{user.nickname || user.name}</span>
+                  <span className="text-gray-700 font-medium">
+                    {user.nickname || user.name}
+                  </span>
                 </div>
+
+                {/* 🛠️ 환경설정 버튼 추가 */}
+                <Link
+                  href="/settings"
+                  className="text-gray-600 border-b border-gray-400 pb-0.3 hover:text-gray-900 hover:border-gray-700 transition-colors"
+                >
+                  설정
+                </Link>
+
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                  className="text-gray-600 border-b border-gray-400 pb-0.3 hover:text-gray-900 hover:border-gray-700 transition-colors"
                 >
                   로그아웃
                 </button>
@@ -104,6 +121,7 @@ const MainPage: React.FC = () => {
           </div>
         </div>
       </header>
+
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -128,7 +146,7 @@ const MainPage: React.FC = () => {
                 클래식한 야추 게임을 즐겨보세요!
               </p>
               <Link
-                href="/dice"
+                href="/game-settings"
                 className="inline-block px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 게임 시작
@@ -168,25 +186,6 @@ const MainPage: React.FC = () => {
               <button className="inline-block px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
                 랭킹 보기
               </button>
-            </div>
-          </div>
-
-          {/* 설정 카드 */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-shadow">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">⚙️</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">설정</h3>
-              <p className="text-gray-600 mb-6">
-                게임 설정을 변경해보세요!
-              </p>
-              <Link
-                href="/settings"
-                className="inline-block px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
-              >
-                설정
-              </Link>
             </div>
           </div>
         </div>

@@ -6,11 +6,13 @@ import * as CANNON from 'cannon-es';
 import { Dice } from '../types/dice';
 import { generateDice } from '../utils/generateDice';
 import { getTopFaceNumber } from '../utils/getTopFaceNumber';
+import DiceRoulette from './DiceRoulette';
 import ScoreTable from './ScoreTable';
-import { calculateScores } from '../utils/calculateScores';
 import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
 import { all } from 'three/tsl';
 
+
+type TurnPhase = 'roulette' | 'rolling' | 'waitingResult';
 
 const DiceRoller: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -26,16 +28,20 @@ const DiceRoller: React.FC = () => {
   const selectedCountRef = useRef(0); // 선택된 주사위 개수 추적
   const selectedMeshRefs = useRef<THREE.Mesh[]>([]);
   const selectedDiceMapRef = useRef<Map<string, Dice>>(new Map());
+  const [unselectedCategories, setUnselectedCategories] = useState<string[]>([]);
   const scoredRef = useRef(false); // 점수 계산 상태 추적
   const diceStateRef = useRef<DiceState>('roll'); // 현재 상태 추적
   const [topFaces, setTopFaces] = useState<number[]>([]);
   const [savedScores, setSavedScores] = useState<Map<string, number>>(new Map());
   const [allSleeping, setAllSleeping] = useState(true);
   const [showResult, setShowResult] = useState(false);
-  const unSelected_category: string[] = [];
-  const totalCategories = Object.keys(calculateScores(diceArrayRef.current)).length;
-  const selectableCategories = totalCategories - (unSelected_category?.length ?? 0);
+  
+  const totalCategories = 12;
+  
   const [resultVisible, setResultVisible] = useState(false);
+  const [rouletteVisible, setRouletteVisible] = useState(true);
+  const [turnPhase, setTurnPhase] = useState<TurnPhase>('roulette');
+  const [rouletteResult, setRouletteResult] = useState<string | null>(null);
 
   const [rollCount, setRollCount] = useState(0);
   const maxRollCount = 3;
@@ -54,6 +60,13 @@ const DiceRoller: React.FC = () => {
   
   // 디버깅용 로그
   console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
+
+  let unSelected_category: string[] = [];
+  const raw = localStorage.getItem('unselectedCategories');
+  if (raw) {
+    unSelected_category =JSON.parse(raw);
+  }
+  const selectableCategories = totalCategories - (unSelected_category?.length ?? 0);
 
   function getDynamicFixedPositions(n: number): THREE.Vector3[] {
     const spacing = 1.5;
@@ -117,8 +130,6 @@ const DiceRoller: React.FC = () => {
     }
   };
 
-
-
   const createNewDice = () => {
     // 기존 주사위 정리
     if (diceArrayRef.current) {
@@ -129,7 +140,7 @@ const DiceRoller: React.FC = () => {
     }
 
     // 새로운 주사위 생성
-    const newDice = generateDice(params.numberOfDice, sceneRef.current!, physicsWorldRef.current!, 1);
+    const newDice = generateDice(params.numberOfDice, sceneRef.current!, physicsWorldRef.current!, 0);
     diceArrayRef.current = newDice;
 
     // 선택 상태 초기화
@@ -163,6 +174,14 @@ const DiceRoller: React.FC = () => {
       });
       setRollCount(1);
     }, 100); // 약간의 지연을 두어 생성이 완료된 후 던지기
+  };
+
+  const handleRouletteResult = (result: string) => {
+    console.log('룰렛 결과:', result);
+    setRouletteResult(result);
+    setTimeout(() => {
+      setTurnPhase('rolling'); // 오버레이 사라지고 주사위 굴리기로 진행
+    }, 1000);
   };
 
   const throwDice = () => {
@@ -215,14 +234,23 @@ const DiceRoller: React.FC = () => {
   };
   
 
-  const handleScoreClick = (category: string, score: number, diceArr :Dice[]) => {
+  const handleScoreClick = (category: string, score: number, diceArr: Dice[]) => {
     if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
-    setSavedScores(prev => new Map(prev.set(category, score)));
+
+    // 새로운 점수 Map을 만들어 먼저 계산
+    const updated = new Map(savedScores);
+    updated.set(category, score);
+
+    const nextScoreCount = updated.size;
+
+    // 점수 저장
+    setSavedScores(updated);
+
     // 게임 액션 호출
     handleGameAction({ type: 'SCORE_POINT', payload: { category, score } });
 
-    // 새로운 주사위 생성
-    createNewDice();
+    setTurnPhase('roulette');
+    
   };
 
   useEffect(() => {
@@ -313,10 +341,36 @@ const DiceRoller: React.FC = () => {
     ring.position.y = -7 + 0.01; // 살짝 위로
     scene.add(ring);
 
-    const newDice = generateDice(params.numberOfDice, scene, physicsWorld, 1); // generate DICE
-    diceArrayRef.current = newDice;
+    if (turnPhase === 'rolling' && rouletteResult) {
+      let number = 0;
+      let numberOfDice = params.numberOfDice // 기본 주사위 개수
+      if (rouletteResult === '123Dice'){
+        number = 1;
+      }else if (rouletteResult === '456Dice'){  
+        number = 2;
+      }else if (rouletteResult === 'ConstantDice'){
+        number = Math.floor(Math.random() * (8 - 3 + 1)) + 3;
+      }else if (rouletteResult === 'RiskDice'){
+        numberOfDice = Math.random() < 0.5 ? 9 : 10;
+      }else if (rouletteResult === 'OddDice'){
+        number = 11;
+      }else if (rouletteResult === 'EvenDice'){
+        number = 12;
+      } else if (rouletteResult === 'HighDice'){
+        number= 13;
+      } else if (rouletteResult === 'WildDice'){
+        number= 14;
+      } else if (rouletteResult === '1or6Dice'){
+        number= 15;
+      } else if (rouletteResult === 'OneMoreDice'){
+        numberOfDice = 6;
+      }else if (rouletteResult === 'OneMinusDice'){
+        numberOfDice = 4;
+      }  
+      const newDice = generateDice(numberOfDice, scene, physicsWorld, number); // generate DICE
+      diceArrayRef.current = newDice;
+    }
 
-    
     scoredRef.current = false;
     
     const render = () => {
@@ -570,6 +624,7 @@ const DiceRoller: React.FC = () => {
             clickedDice.mesh.quaternion.z,
             clickedDice.mesh.quaternion.w
         ));
+        
 
         setSelectedMeshes(prev => [...prev, clickedDice.mesh]);
         setSelectedDiceMap(prev => {
@@ -588,7 +643,7 @@ const DiceRoller: React.FC = () => {
     return () => {
       canvas.removeEventListener('click', onClick);
     };
-  }, [showResult]);
+  }, [turnPhase,showResult]);
 
     // 결과 화면 표시를 위한 useEffect 추가
     useEffect(() => {
@@ -607,6 +662,13 @@ const DiceRoller: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen">
+      {/* 룰렛 오버레이 */}
+      {turnPhase === 'roulette' && (
+        !showResult && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70">
+          <DiceRoulette onResult={handleRouletteResult} />
+        </div>
+      ))}
       {/* 시뮬레이터 canvas 전체화면 */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
         {/* <h1 className="text-4xl font-bold text-black drop-shadow-lg">YACHT GAME</h1> */}
@@ -625,23 +687,22 @@ const DiceRoller: React.FC = () => {
         선택된 주사위: {selectedMeshes.length}개
       </div>
       {topFaces.length >= 0 && (
-        <div className="absolute left-8 top-20 z-10">
+        <div className="absolute left-8 top-30 z-10">
          <ScoreTable dice={topFaces} onScoreClick={handleScoreClick} savedScores={savedScores} unSelected_category={unSelected_category}/>
         </div>
       )}
       {/* 점수 및 버튼 (optional) */}
       <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 text-center">
-        
         <button
           onClick={throwDice}
-          disabled={!canRoll}
+          disabled={turnPhase !== 'rolling' || !canRoll}
           className={`ml-4 px-4 py-2 rounded shadow text-white ${
             !canRoll
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          Throw the Dice ({rollCount}/{maxRollCount}) - {diceState} [{gamePhase}]
+          Throw the Dice ({rollCount}/{maxRollCount})
         </button>
       </div> 
       {showResult && (

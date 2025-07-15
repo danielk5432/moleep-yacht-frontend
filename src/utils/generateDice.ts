@@ -12,8 +12,7 @@ export function generateDice(
   const diceList: Dice[] = [];
 
   for (let i = 0; i < numberOfDice; i++) {
-    const dice = i !== 4 ? new Dice(i) : new (diceidmap.get(11) ?? Dice)(i);
-
+    const dice = i !== 4 ? new Dice(i) : new (diceidmap.get(diceid) ?? Dice)(i);
     const initialPosition = new CANNON.Vec3(6, i * 1.5, 0);
     dice.addToScene(scene, physicsWorld, initialPosition);
     diceList.push(dice);

@@ -11,6 +11,9 @@ import { Dice103050 } from './103050dice';
 import { Dice204060 } from './204060dice';
 import { DiceOdd } from './odddice';
 import { DiceEven } from './evendice';
+import { Dice1Plus } from './1plusdice';
+import { DiceWild } from './wilddice';
+import { Dice16} from './16dice';
 
 export { Dice } from './dice';
 export { Dice123 } from './123dice'; 
@@ -25,6 +28,9 @@ export { Dice103050 } from './103050dice';
 export { Dice204060 } from './204060dice';
 export { DiceOdd } from './odddice';
 export { DiceEven } from './evendice';
+export { Dice1Plus } from './1plusdice';
+export { DiceWild } from './wilddice';
+export { Dice16 } from './16dice';
 
 export const diceidmap: Map<number, typeof Dice> = new Map([
   [0, Dice],
@@ -40,4 +46,7 @@ export const diceidmap: Map<number, typeof Dice> = new Map([
   [10, Dice204060],
   [11, DiceOdd],
   [12, DiceEven],
+  [13, Dice1Plus],
+  [14, DiceWild],
+  [15, Dice16]
 ]);
