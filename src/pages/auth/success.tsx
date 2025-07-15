@@ -12,7 +12,8 @@ const AuthSuccess: React.FC = () => {
     
     if (token && typeof token === 'string') {
       // 토큰을 localStorage에 저장
-      localStorage.setItem('authToken', token);
+      localStorage.setItem('authToken', token); // TODO 쿠키로 옮기고 만료 안됬으면 자동 로그인
+      
       
       // 프로필 설정 여부 확인 후 리다이렉트
       checkProfileSetup(token);
@@ -22,7 +23,6 @@ const AuthSuccess: React.FC = () => {
   const checkProfileSetup = async (token: string) => {
     try {
       const userData = await api.getProfile(token);
-      
       // 닉네임이 설정되어 있지 않으면 프로필 설정 페이지로
       if (!userData.nickname || !userData.profileSetup) {
         router.push('/setup-profile');

@@ -27,6 +27,12 @@ const MainPage: React.FC = () => {
     if (user && user.nickname) {
       localStorage.setItem('nickname', user.nickname);
     }
+    if (user && user.id) {
+      localStorage.setItem('userId', user.id);
+    }
+    if (user && user.picture){
+      localStorage.setItem('userPicture', user.picture);
+    }
   }, [user]);
 
   const checkAuth = async () => {
