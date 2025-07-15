@@ -186,6 +186,9 @@ const DiceRoller: React.FC = () => {
     
     // 점수판 초기화
     setTopFaces([]);
+    setSelectedDiceMap(new Map());
+    selectedCountRef.current = 0;
+
     scoredRef.current = false; // 점수 계산 상태 초기화
 
     // rolling 상태로 변경
@@ -411,10 +414,6 @@ const DiceRoller: React.FC = () => {
           allSleepingLocal = false;
         }
         
-        // 디버깅용 로그
-        if (diceState === 'roll') {
-          console.log("Dice", dice.id, "selected:", dice.selected, "sleepState:", dice.body.sleepState, "SLEEPING:", CANNON.Body.SLEEPING, "allSleepingLocal:", allSleepingLocal);
-        }
       }
 
       // 상태 업데이트
@@ -469,6 +468,9 @@ const DiceRoller: React.FC = () => {
       scoredRef.current = false;
       if (!scoreResult) return;
       scoreResult.innerHTML = '';
+      setSelectedMeshes([]);
+      setSelectedDiceMap(new Map());
+      selectedCountRef.current = 0;
       
       diceArrayRef.current.forEach((d, i) => {
         d.body.velocity.setZero();
@@ -483,6 +485,7 @@ const DiceRoller: React.FC = () => {
         d.body.allowSleep = true;
         d.body.wakeUp(); // 반드시 wakeUp!
       });
+
     };
 
     window.addEventListener('resize', () => {
