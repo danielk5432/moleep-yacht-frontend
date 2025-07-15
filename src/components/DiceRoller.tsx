@@ -8,9 +8,11 @@ import { generateDice } from '../utils/generateDice';
 import DiceRoulette from './DiceRoulette';
 import ScoreTable from './ScoreTable';
 import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
+import { playSound } from '@/utils/playSound';
 
 
 type TurnPhase = 'roulette' | 'rolling' | 'waitingResult';
+
 
 const DiceRoller: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -134,6 +136,7 @@ const stopChargingAndThrow = () => {
   const finalPower = powerRef.current;
   console.log('Final throw power:', finalPower);
   throwDice(finalPower);
+  playSound('/sounds/dice.wav', 500);
 
   // 초기화
   powerRef.current = 0;
@@ -234,7 +237,7 @@ const stopChargingAndThrow = () => {
 
   const handleScoreClick = (category: string, score: number, diceArr: Dice[]) => {
     if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
-
+    playSound('./sounds/click.wav',5000);
     // 새로운 점수 Map을 만들어 먼저 계산
     const updated = new Map(savedScores);
     updated.set(category, score);
@@ -260,14 +263,14 @@ const stopChargingAndThrow = () => {
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.shadowMap.enabled = true;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight - 100);
+    renderer.setSize(window.innerWidth, window.innerHeight);
     rendererRef.current = renderer;
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
     const isPortrait = window.innerHeight > window.innerWidth;
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight - 100), 0.1, 300);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight), 0.1, 300);
 
     if (isPortrait) {
       // 세로가 더 길 경우 (모바일 세로 모드 등)
@@ -360,26 +363,37 @@ const stopChargingAndThrow = () => {
       let number = 0;
       let numberOfDice = params.numberOfDice // 기본 주사위 개수
       if (rouletteResult === '123Dice'){
+        playSound('/sounds/nope.wav', 500);
         number = 1;
       }else if (rouletteResult === '456Dice'){  
+        playSound('/sounds/yeah.wav', 500);
         number = 2;
       }else if (rouletteResult === 'ConstantDice'){
+        playSound('/sounds/success.wav', 500);
         number = Math.floor(Math.random() * (8 - 3 + 1)) + 3;
       }else if (rouletteResult === 'RiskDice'){
+        playSound('/sounds/nope.wav', 500);
         number = Math.random() < 0.5 ? 9 : 10;
       }else if (rouletteResult === 'OddDice'){
+        playSound('/sounds/success.wav', 500);
         number = 11;
       }else if (rouletteResult === 'EvenDice'){
+        playSound('/sounds/success.wav', 500);
         number = 12;
       } else if (rouletteResult === 'HighDice'){
+        playSound('/sounds/yeah.wav', 500);
         number= 13;
       } else if (rouletteResult === 'WildDice'){
+        playSound('/sounds/yeah.wav', 500);
         number= 14;
       } else if (rouletteResult === '1or6Dice'){
+        playSound('/sounds/success.wav', 500);
         number= 15;
       } else if (rouletteResult === 'OneMoreDice'){
+        playSound('/sounds/yeah.wav', 500);
         numberOfDice = 6;
       }else if (rouletteResult === 'OneMinusDice'){
+        playSound('/sounds/nope.wav', 500);
         numberOfDice = 4;
       }  
       const newDice = generateDice(numberOfDice, scene, physicsWorld, number); // generate DICE
@@ -544,6 +558,7 @@ const stopChargingAndThrow = () => {
       if (clickedDice.selected) {
         // 🎯 이미 선택된 주사위를 다시 클릭 → 원래 상태로 복원
         console.log("Clicked on an already selected dice. Restoring it.");
+        playSound('/sounds/select.wav', 500);
 
         clickedDice.selected = false;
 
@@ -594,8 +609,9 @@ const stopChargingAndThrow = () => {
 
       } else {
         // 🎲 선택되지 않은 주사위를 클릭 → 선택된 위치로 이동
+        
         console.log("Clicked on an unselected dice. Selecting it.");
-
+        playSound('/sounds/select.wav', 500);
         // stop 상태일 때만 선택 가능
         if (diceStateRef.current !== 'stop') {
           console.log("Cannot select dice in current state. Current state:", diceStateRef.current, "canSelect:", canSelect);
@@ -710,7 +726,7 @@ const stopChargingAndThrow = () => {
       {/* 룰렛 오버레이 */}
       {turnPhase === 'roulette' && (
         !showResult && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70">       
           <DiceRoulette onResult={handleRouletteResult} />
         </div>
       ))}
@@ -726,7 +742,9 @@ const stopChargingAndThrow = () => {
       <div className="absolute right-4 top-4 z-20 hidden">
         <span ref={scoreRef} className="text-lg font-semibold bg-white px-4 py-2 rounded shadow" />
       </div>
-      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
+      <canvas ref={canvasRef} className="absolute inset-0 z-0"
+          style={{ height: 'calc(100vh - 120px)' }}
+        />
       <div className="absolute top-4 left-4 z-10 bg-white px-3 py-2 rounded shadow text-gray-800 font-medium">
         선택된 주사위: {selectedMeshes.length}개
       </div>
@@ -748,12 +766,12 @@ const stopChargingAndThrow = () => {
             !canRoll ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          Throw Dice ({rollCount}/{maxRollCount})
+          Throw Dice({rollCount}/{maxRollCount})
         </button>
 
         <div className='h-2'></div>
 
-        <div className="w-full max-w-[200px] h-6 bg-gray-50 rounded mt-2">
+        <div className="w-full max-w-[200px] h-6 bg-gray-300 rounded mt-2">
           <div
             className="h-6 rounded"
             style={{

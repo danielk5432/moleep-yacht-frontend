@@ -5,6 +5,8 @@ import React, {useState} from 'react';
 import { calculateScores } from '../utils/calculateScores';
 import { Dice } from '../types/dice';
 import { DiceWild } from '../types/wilddice';
+import { playSound, timeout} from '../utils/playSound';
+
 
 interface ScoreTableProps {
   dice: (number|string)[];
@@ -93,7 +95,7 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
                     }
                     onClick={() => {
                       if (!isUsed) onScoreClick(category, score, scoreData[score]);
-                    }}
+                      }}
                   >
                     {displayScore}
                   </div>

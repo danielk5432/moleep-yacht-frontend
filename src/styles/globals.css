@@ -8,8 +8,12 @@
 }
 
 :root {
-  --background: #ffffff;
+  --background: #f0f0f0;
   --foreground: #171717;
+}
+
+html, body {
+  overflow: hidden;
 }
 
 

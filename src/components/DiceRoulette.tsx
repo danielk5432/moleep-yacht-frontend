@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { playSound } from '../utils/playSound';
 
 const Wheel = dynamic(
   () => import('react-custom-roulette').then(mod => mod.Wheel),
@@ -52,22 +53,26 @@ const DiceRoulette: React.FC<DiceRouletteProps> = ({ onResult }) => {
   const [data, setData] = useState(() => generateData());
   const [mustSpin, setMustSpin] = useState(false);
   const [prizeNumber, setPrizeNumber] = useState(0);
-
   // 페이지 진입 시 자동 룰렛 돌리기
   useEffect(() => {
-    const prizeTimer = setTimeout(() => {
-    const newPrizeNumber = Math.floor(Math.random() * data.length);
-    setPrizeNumber(newPrizeNumber);
+    setTimeout(() => {
+      playSound('/sounds/roulette_5.wav',500);
+      const prizeTimer = setTimeout(() => {
+      const newPrizeNumber = Math.floor(Math.random() * data.length);
+      setPrizeNumber(newPrizeNumber);
 
-    // 약간의 멈춤 후 spin 시작
-    const spinTimer = setTimeout(() => {
-      setMustSpin(true);
-    }, 300); // 0.3초 멈췄다가 spin
+      // 약간의 멈춤 후 spin 시작
+      const spinTimer = setTimeout(() => {
+        
+        setMustSpin(true);
+      }, 300); // 0.3초 멈췄다가 spin
 
-    return () => clearTimeout(spinTimer);
-  }, 500); // 0.5초 후에 prize 결정
+      return () => clearTimeout(spinTimer);
+    }, 500); // 0.5초 후에 prize 결정
 
-  return () => clearTimeout(prizeTimer);
+    return () => clearTimeout(prizeTimer);
+    }, 1000);
+  
 }, []);
 
   return (
@@ -75,7 +80,7 @@ const DiceRoulette: React.FC<DiceRouletteProps> = ({ onResult }) => {
       className="w-full max-w-3xl mx-auto rounded-2xl p-4 flex flex-col items-center justify-center"
       style={{ backgroundColor: 'rgba(240, 240, 240, 1)' }}
     >
-      <h1 className="text-xl font-semibold mb-4 text-center">Your Dice</h1>
+      <h1 className="text-3xl font-semibold mb-4 text-center">Your Dice</h1>
       <div className="flex justify-center">
         <Wheel
           mustStartSpinning={mustSpin}

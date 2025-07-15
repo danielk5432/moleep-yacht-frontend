@@ -109,7 +109,7 @@ const LoginPage: React.FC = () => {
             <div className="space-y-2">
               <button
                 onClick={() => router.push('/')}
-                className="w-full px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 게임 시작
               </button>
