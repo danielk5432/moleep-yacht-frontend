@@ -4,6 +4,7 @@ import * as CANNON from 'cannon-es';
 
 export class Dice {
   id: number;
+  dicetype: string;
   mesh: THREE.Mesh;
   body: CANNON.Body;
   selected: boolean;
@@ -15,9 +16,11 @@ export class Dice {
   backgroundColor: string;
   borderColor: string;
   dotColor: string;
+  rarity: string;
 
   constructor(id: number) {
     this.id = id;
+    this.dicetype = 'dice'; // 기본 타입, 상속받아서 수정
     this.faceNumber = [1, 2, 3, 4, 5, 6]; // 기본값, 상속받아서 수정
     this.meshOrder = [1, 6, 2, 5, 3, 4]; // 기본값, 상속받아서 수정
     this.backgroundColor = '#ffffff'; // 기본 배경색
@@ -27,6 +30,7 @@ export class Dice {
     this.stoppedPosition = undefined;
     this.stoppedQuaternion = undefined;
     this.targetPosition = undefined;
+    this.rarity = 'commmon'; // 기본 타입
 
     // Create mesh and body
     this.mesh = this.createDiceMesh();
