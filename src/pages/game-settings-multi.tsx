@@ -1,13 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react'; // useEffect 추가
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { useSocketStore } from "../stores/socketStore";
-// import { useUserStore } from "../stores/userStore"; // 닉네임 등을 가져올 유저 스토어 (가정)
-
-// 'assert'는 서버사이드 모듈이므로 클라이언트 코드에서 제거해야 합니다.
-// import { match } from 'assert';
 
 const good_data = [
   { option: '456Dice', image: { uri: '/images/456_dice_only.png' } },
@@ -15,6 +11,21 @@ const good_data = [
   { option: 'HighDice', image: { uri: '/images/high_dice_only.png' } },
   { option: 'WildDice', image: { uri: '/images/wild_dice_only.png' } },
 ];
+
+interface Player {
+  id: string;
+  nickname: string;
+  joinedAt: Date;
+  goodDiceRecord: Record<string, number>;
+}
+
+interface MatchData {
+  roomId: string;
+  players: Player[];
+  dicePool: string[];
+  createdAt: Date;
+}
+
 
 const MAX_TOTAL = 4;
 
@@ -25,9 +36,7 @@ const GoodDiceSelectionPage: React.FC = () => {
     Object.fromEntries(good_data.map(d => [d.option, 0]))
   );
 
-  // 1. Zustand 스토어에서 소켓 관련 함수와 상태를 가져옵니다.
   const { socket, isConnected, connect, disconnect } = useSocketStore();
-  // const { nickname } = useUserStore(); // 실제로는 유저 스토어에서 닉네임을 가져옵니다.
 
   const totalSelected = Object.values(counts).reduce((a, b) => a + b, 0);
 
@@ -40,57 +49,84 @@ const GoodDiceSelectionPage: React.FC = () => {
     });
   };
 
-  // "게임 시작" 버튼 클릭 시 실행
+  // "게임 시작" 버튼 로직: UI 변경 및 연결 시작만 담당합니다.
   const handleStart = () => {
-    // 소켓 연결을 시작하고, 매칭 상태로 전환
-    connect();
     setMatching(true);
+    // 이 함수는 단순히 연결을 시작하라는 신호를 보냅니다.
+    // 실제 register, joinQueue 등은 아래 useEffect에서 상태에 따라 자동으로 처리됩니다.
+    connect(); 
   };
 
-  // "뒤로가기" 또는 "매칭취소" 버튼 클릭 시 실행
+  // "매칭 취소" 버튼 로직
   const handleCancel = () => {
     if (matching) {
-      // 매칭 중일 경우, 큐에서 나가고 소켓 연결을 끊습니다.
-      if (socket) {
-        socket.emit('leaveQueue'); // 서버에 큐 이탈 알림
-      }
+      // 서버에 leaveQueue 이벤트가 구현되어 있다면 유효합니다.
+      socket?.emit('leaveQueue'); 
       disconnect();
       setMatching(false);
     } else {
-      // 매칭 중이 아닐 경우, 메인 페이지로 이동
       router.push('/');
     }
   };
 
-  // 2. 소켓의 상태가 변경될 때마다 특정 로직을 실행하는 useEffect
+  // 소켓 연결 및 매칭 요청을 처리하는 useEffect
   useEffect(() => {
-    // 소켓이 연결되었고, 사용자가 '매칭' 상태일 때
-    if (isConnected && socket && matching) {
-      console.log('Socket connected. Emitting joinQueue...');
-      // 서버에 'joinQueue' 이벤트를 보내 매칭 대기열에 참가합니다.
-      // 실제로는 닉네임, 유저ID 등의 정보를 함께 보냅니다.
-      socket.emit('joinQueue', {
-        id : localStorage.getItem("id"),
-        nickname: localStorage.getItem("nickname") || "annoymous" ,
-        goodDiceRecord: counts
-      });
+    // 1. "게임 시작"을 눌렀고 (matching=true),
+    // 2. 소켓 연결이 성공했을 때 (isConnected=true, socket 존재)
+    // 이 모든 조건이 만족되면 아래 로직이 단 한번 실행됩니다.
+    if (matching && isConnected && socket) {
+      const playerId = localStorage.getItem("userId");
+      const nickname = localStorage.getItem("nickname") || "anonymous";
 
-      // 서버로부터 'matchFound' 이벤트를 수신 대기합니다.
-      socket.on('matchFound', (data: { roomId: string }) => {
-        console.log(`Match found! Navigating to room: ${data.roomId}`);
-        // 매칭이 성공하면 게임방으로 이동합니다.
-        router.push(`/game/${data.roomId}`);
+      if (!playerId) {
+        alert("플레이어 ID가 없어 매칭을 시작할 수 없습니다.");
+        setMatching(false);
+        disconnect();
+        return;
+      }
+      
+      // 백엔드에 플레이어 등록 요청
+      console.log(`Sending 'register' with: ${playerId}`);
+      socket.emit('register', playerId);
+
+      // 백엔드에 매칭 대기열 참가 요청
+      console.log(`Sending 'matchmaking:joinQueue' with:`, { playerId, nickname, goodDiceRecord: counts });
+      socket.emit('matchmaking:joinQueue', {
+        playerId,
+        nickname,
+        goodDiceRecord: counts,
       });
     }
+  }, [matching, isConnected, socket, counts, disconnect]);
 
-    // 3. Cleanup 함수: 이 컴포넌트가 사라질 때 실행됩니다.
-    // 이벤트 리스너가 중복으로 쌓이는 것을 방지합니다.
-    return () => {
-      if (socket) {
-        socket.off('matchFound');
-      }
-    };
-  }, [isConnected, socket, matching, counts, router]);
+
+  // 서버로부터 오는 이벤트를 수신 대기하는 useEffect
+  useEffect(() => {
+    // 소켓 객체가 있을 때만 이벤트 리스너를 등록합니다.
+    if (socket) {
+      const handleMatchFound = (matchData: MatchData) => {
+        console.log(`✅ Match found! Navigating to room: ${matchData.roomId}`);
+        setMatching(false); // 매칭 완료되었으므로 상태 초기화
+        router.push(`/dice?multiplay=true&roomId=${matchData.roomId}`);
+      };
+
+      const handleMatchWaiting = () => {
+        console.log('...Waiting for other players.');
+        // 필요하다면 "매칭 대기 중..." UI에 애니메이션 효과 등을 추가할 수 있습니다.
+      };
+
+      // 이벤트 리스너 등록
+      socket.on('matchmaking:matched', handleMatchFound);
+      socket.on('matchmaking:waiting', handleMatchWaiting);
+
+      // 컴포넌트가 사라질 때(Cleanup) 반드시 리스너를 제거해야 합니다.
+      // 이렇게 하지 않으면 메모리 누수나 이벤트 중복 발생의 원인이 됩니다.
+      return () => {
+        socket.off('matchmaking:matched', handleMatchFound);
+        socket.off('matchmaking:waiting', handleMatchWaiting);
+      };
+    }
+  }, [socket, router]);
 
 
   return (
@@ -106,13 +142,13 @@ const GoodDiceSelectionPage: React.FC = () => {
               <div className="font-semibold mb-2">{option}</div>
               <div className="flex items-center gap-2">
                 <button
-                  disabled={matching} // 매칭 중에는 비활성화
+                  disabled={matching}
                   onClick={() => handleChange(option, -1)}
                   className="px-3 py-0.5 text-lg rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                 >−</button>
                 <span className="text-lg font-medium"> {counts[option]} </span>
                 <button
-                  disabled={matching} // 매칭 중에는 비활성화
+                  disabled={matching}
                   onClick={() => handleChange(option, 1)}
                   className="px-3 py-0.5 text-lg rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                 >+</button>
@@ -127,7 +163,7 @@ const GoodDiceSelectionPage: React.FC = () => {
 
         <button
           onClick={handleStart}
-          disabled={totalSelected !== MAX_TOTAL || matching} // 4개를 선택하지 않았거나, 매칭 중이면 비활성화
+          disabled={totalSelected !== MAX_TOTAL || matching}
           className={`w-full py-2 rounded-md text-white font-semibold transition
             disabled:bg-gray-400 disabled:cursor-not-allowed
             ${totalSelected === MAX_TOTAL && !matching ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
