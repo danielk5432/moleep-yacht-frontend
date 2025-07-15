@@ -41,3 +41,14 @@ export const diceidmap: Map<number, typeof Dice> = new Map([
   [11, DiceOdd],
   [12, DiceEven],
 ]);
+
+const diceNames = Array.from(diceidmap.values()).map(d => d.name);
+type DiceName = typeof diceNames[number]; // 'Dice' | 'Dice123' | 'Dice456' | ...
+
+export type TypeIdMap = {
+  [K in DiceName]: typeof Dice;
+};
+
+export const diceReverseMap: TypeIdMap = Object.fromEntries(
+  Array.from(diceidmap.entries()).map(([key, value]) => [value.name, value])
+);

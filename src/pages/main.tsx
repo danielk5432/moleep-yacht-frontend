@@ -128,7 +128,7 @@ const MainPage: React.FC = () => {
                 클래식한 야추 게임을 즐겨보세요!
               </p>
               <Link
-                href="/dice"
+                href="/dice?multiplay=false"
                 className="inline-block px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 게임 시작

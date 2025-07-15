@@ -10,6 +10,10 @@ import ScoreTable from './ScoreTable';
 import { calculateScores } from '../utils/calculateScores';
 import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
 import { all } from 'three/tsl';
+import { useSocketStore } from '../stores/socketStore';
+import { useGameStore, DicePhysics } from '../stores/gameStore';
+import { useRouter } from 'next/router';
+import { diceReverseMap } from '../types';
 
 
 const DiceRoller: React.FC = () => {
@@ -37,23 +41,31 @@ const DiceRoller: React.FC = () => {
   const selectableCategories = totalCategories - (unSelected_category?.length ?? 0);
   const [resultVisible, setResultVisible] = useState(false);
 
-  const [rollCount, setRollCount] = useState(0);
   const maxRollCount = 3;
 
   // FSM 상태 관리
-  const [diceState, setDiceState] = useState<DiceState>('roll');
   const [isRolling, setIsRolling] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
 
   // 게임 상태 관리
-  const [gamePhase, setGamePhase] = useState<GamePhase>('myturn');
+  const {
+    isMyTurn, setIsMyTurn,
+    dicePhysics, setDicePhysics,
+    rollcount, setRollCount, // Zustand에서 가져오기
+    diceState, setDiceState, // Zustand에서 가져오기
+  } = useGameStore();
+
+  const router = useRouter();
+  const { multiplay } = router.query;
+  const roomId = typeof router.query.room === 'string' ? router.query.room : '';
+
+  const { socket } = useSocketStore();
 
   // 상태에 따른 조건들
-  const canSelect = diceState === 'stop' && gamePhase === 'myturn';
-  const canRoll = diceState === 'stop' && rollCount < maxRollCount && gamePhase === 'myturn';
+  const canSelect = diceState === 'stop' && isMyTurn;
+  const canRoll = diceState === 'stop' && rollcount < maxRollCount && isMyTurn;
   
   // 디버깅용 로그
-  console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
 
   function getDynamicFixedPositions(n: number): THREE.Vector3[] {
     const spacing = 1.5;
@@ -103,12 +115,9 @@ const DiceRoller: React.FC = () => {
         break;
       case 'SCORE_POINT':
         console.log('📤 WebSocket: Sending score action');
-        setGamePhase('oppturn');
-        console.log('🔄 Game Phase: myturn -> oppturn');
         break;
       case 'START_TURN':
         console.log('🔄 Game Phase: Starting new turn');
-        setGamePhase('myturn');
         setRollCount(0);
         break;
       case 'END_TURN':
@@ -119,112 +128,148 @@ const DiceRoller: React.FC = () => {
 
 
 
-  const createNewDice = () => {
-    // 기존 주사위 정리
-    if (diceArrayRef.current) {
-      diceArrayRef.current.forEach(dice => {
-        sceneRef.current!.remove(dice.mesh);
-        physicsWorldRef.current!.removeBody(dice.body);
-      });
-    }
+  // 랜덤 물리량 생성 함수
+  function makeRandomPhysics(num: number) {
+    return Array.from({ length: num }).map((_, i) => ({
+      id: diceArrayRef.current[i].id,
+      type: diceReverseMap[typeof diceArrayRef.current[i]],
+      position: { x: 4, y: i * 1.5, z: 0 },
+      rotation: { x: Math.random(), y: Math.random(), z: Math.random(), w: Math.random() },
+      velocity: { x: 0, y: 0, z: 0 },
+      angularVelocity: { x: 0, y: 0, z: 0 },
+    }));
+  }
 
-    // 새로운 주사위 생성
-    const newDice = generateDice(params.numberOfDice, sceneRef.current!, physicsWorldRef.current!, 1);
-    diceArrayRef.current = newDice;
+  // impulse만 랜덤 생성 (shake용)
+  function makeRandomImpulses(num: number) {
+    return Array.from({ length: num }).map(() => ({
+      impulse: {
+        x: (Math.random() - 0.5) * 2,
+        y: 20 + Math.random() * 5,
+        z: (Math.random() - 0.5) * 2,
+      },
+      angularImpulse: { x: 0, y: 0, z: 0 },
+    }));
+  }
 
-    // 선택 상태 초기화
-    setSelectedMeshes([]);
-    setSelectedDiceMap(new Map());
-    selectedCountRef.current = 0;
-    selectedMeshRefs.current = [];
-    selectedDiceMapRef.current.clear();
+  // 주사위 생성 (payload 기반)
+  function createDice(physicsArr: DicePhysics[], scene: THREE.Scene, physicsWorld: CANNON.World): Dice[] {
+    // 기존 주사위 완전 제거
+    clearDice(scene, physicsWorld, diceArrayRef.current);
+    // generateDice로 Dice[] 생성 (diceid는 payload에서 가져오거나, 일단 1로 고정)
+    const diceList = generateDice(physicsArr.length, scene, physicsWorld, 1);
+    // 각 dice에 물리량 세팅
+    diceList.forEach((dice, i) => {
+      const p = physicsArr[i];
+      // 로그로 물리량 출력
+      console.log(`[createDice] id: ${p.id}, position:`, p.position, 'rotation:', p.rotation, 'velocity:', p.velocity, 'angularVelocity:', p.angularVelocity);
+      dice.body.position.set(p.position.x, p.position.y, p.position.z);
+      dice.body.quaternion.set(p.rotation.x, p.rotation.y, p.rotation.z, p.rotation.w);
+      dice.body.velocity.set(p.velocity.x, p.velocity.y, p.velocity.z);
+      dice.body.angularVelocity.set(p.angularVelocity.x, p.angularVelocity.y, p.angularVelocity.z);
+      dice.body.wakeUp();
+    });
+    diceArrayRef.current = diceList;
+    return diceList;
+  }
 
-    // 점수 초기화
-    setTopFaces([]);
-    setRollCount(0);
-    setAllSleeping(false);
-    setRollingState(); // 초기 상태를 roll로 설정
-
-    // 새로 생성된 주사위를 바로 던지기
-    setTimeout(() => {
-      scoredRef.current = false; // scored 초기화
-      diceArrayRef.current.forEach((d, i) => {
-        d.body.velocity.setZero();
-        d.body.angularVelocity.setZero();
-        d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
-        d.mesh.position.copy(d.body.position);
-        d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
-        const threeQuat = d.mesh.quaternion;
-        d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
-        const force = 3 + 5 * Math.random();
-        d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
-        d.body.allowSleep = true;
-        d.body.wakeUp();
-      });
-      setRollCount(1);
-    }, 100); // 약간의 지연을 두어 생성이 완료된 후 던지기
-  };
-
-  const throwDice = () => {
-    if (!canRoll) return;
-
-    if (!scoreRef.current) return;
-    scoreRef.current.innerHTML = '';
-    
-    // 점수판 초기화
-    setTopFaces([]);
-    scoredRef.current = false; // 점수 계산 상태 초기화
-
-    // rolling 상태로 변경
-    setRollingState();
-
-    // 게임 액션 호출
-    handleGameAction({ type: 'THROW_DICE', payload: { rollCount: rollCount + 1 } });
-
-    diceArrayRef.current.forEach((d, i) => {
-      if (d.selected) return; 
-
+  // impulse/velocity 적용 (던지기)
+  function throwDiceToWorld(diceArr: Dice[], impulses: { impulse: { x: number; y: number; z: number } }[]): void {
+    diceArr.forEach((d: Dice, i: number) => {
       d.body.type = CANNON.Body.DYNAMIC;
       d.body.allowSleep = true;
-
       d.body.velocity.setZero();
       d.body.angularVelocity.setZero();
       d.mesh.position.copy(d.body.position as any);
-      const impulse = new CANNON.Vec3(
-        (Math.random() - 0.5) * 2,  // X 방향: 약간의 흔들림
-        20 + Math.random() * 5,     // Y 방향: 위쪽 강한 충격
-        (Math.random() - 0.5) * 2   // Z 방향: 약간의 흔들림
-      );
-      const contactPoint = new CANNON.Vec3(0, 0, 0.2); // 중심에서 약간 위쪽
+      const impulse = impulses[i]?.impulse || { x: 0, y: 0, z: 0 };
+      const contactPoint = new CANNON.Vec3(0, 0, 0.2);
       const threeQuat = d.mesh.quaternion;
       d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
-      d.body.applyImpulse(impulse, contactPoint);
+      d.body.applyImpulse(new CANNON.Vec3(impulse.x, impulse.y, impulse.z), contactPoint);
       d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
       d.body.wakeUp(); 
     });
+  }
 
-    setRollCount(prev => prev + 1);
+  // 기존 주사위 완전 제거 함수
+  function clearDice(scene: THREE.Scene, physicsWorld: CANNON.World, diceArr: Dice[]) {
+    diceArr.forEach(dice => {
+      scene.remove(dice.mesh);
+      physicsWorld.removeBody(dice.body);
+    });
+  }
+
+  // 실제 사용부
+  const numDice = 5;
+
+ 
+
+  // shake(추가 굴리기)도 velocity만 갱신
+  const handleShake = () => {
+    const newPhysics = dicePhysics.map((p, i) => {
+      const velocity = { x: (Math.random() - 0.5) * 2, y: 20 + Math.random() * 5, z: (Math.random() - 0.5) * 2 };
+      return { ...p, velocity };
+    });
+    setDicePhysics(newPhysics);
+    if (socket) {
+      socket.emit('game:action', { roomId, type: 'shake', payload: newPhysics });
+    }
+    // 내 주사위에만 velocity 적용
+      diceArrayRef.current.forEach((d, i) => {
+      d.body.velocity.set(newPhysics[i].velocity.x, newPhysics[i].velocity.y, newPhysics[i].velocity.z);
+        d.body.wakeUp();
+      });
   };
 
-  const params = {
-    numberOfDice: 5,
-    segments: 40,
-    edgeRadius: 0.07,
-    notchRadius: 0.15,
-    notchDepth: 0.1,
-  };
-  
+  // 소켓 수신부: oppturn(상대방 턴)에서는 createDice 호출 금지, velocity만 세팅
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('game:action', (action: any) => {
+      if (action.type === 'initial' && action.payload) {
+        setDicePhysics(action.payload);
+        if (isMyTurn) {
+          clearDice(sceneRef.current!, physicsWorldRef.current!, diceArrayRef.current);
+          diceArrayRef.current = action.payload.map((p: DicePhysics, i: number) => {
+            const dice = new Dice(i);
+            dice.addToScene(sceneRef.current!, physicsWorldRef.current!, new CANNON.Vec3(p.position.x, p.position.y, p.position.z));
+            dice.body.quaternion.set(p.rotation.x, p.rotation.y, p.rotation.z, p.rotation.w);
+            dice.body.velocity.set(p.velocity.x, p.velocity.y, p.velocity.z);
+            dice.body.angularVelocity.set(p.angularVelocity.x, p.angularVelocity.y, p.angularVelocity.z);
+            dice.body.wakeUp();
+            return dice;
+          });
+        } else {
+          // oppturn: 기존 주사위에 velocity만 세팅
+          diceArrayRef.current.forEach((d, i) => {
+            d.body.position.set(action.payload[i].position.x, action.payload[i].position.y, action.payload[i].position.z);
+            d.body.quaternion.set(action.payload[i].rotation.x, action.payload[i].rotation.y, action.payload[i].rotation.z, action.payload[i].rotation.w);
+            d.body.velocity.set(action.payload[i].velocity.x, action.payload[i].velocity.y, action.payload[i].velocity.z);
+            d.body.angularVelocity.set(action.payload[i].angularVelocity.x, action.payload[i].angularVelocity.y, action.payload[i].angularVelocity.z);
+            d.body.wakeUp();
+          });
+        }
+      }
+      if (action.type === 'shake' && action.payload) {
+        setDicePhysics(action.payload);
+        // oppturn: 기존 주사위에 velocity만 세팅
+        diceArrayRef.current.forEach((d, i) => {
+          d.body.velocity.set(action.payload[i].velocity.x, action.payload[i].velocity.y, action.payload[i].velocity.z);
+          d.body.wakeUp();
+        });
+      }
+      if (action.dicePhysics) setDicePhysics(action.dicePhysics);
+      //if (action.scores) setScores(action.scores);
+      //if (action.selected) setSelected && setSelected(action.selected);
+      //setAvailableActions(action.availableActions || []);
+      setIsMyTurn(true); // 내 턴이 돌아옴
+    });
+    return () => {
+      socket.off('game:action');
+    };
+  }, [socket, setDicePhysics, isMyTurn]);
 
-  const handleScoreClick = (category: string, score: number, diceArr :Dice[]) => {
-    if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
-    setSavedScores(prev => new Map(prev.set(category, score)));
-    // 게임 액션 호출
-    handleGameAction({ type: 'SCORE_POINT', payload: { category, score } });
-
-    // 새로운 주사위 생성
-    createNewDice();
-  };
-
+  // ---------------------------------------
+  // initial scene reset (uesEffect)
   useEffect(() => {
     const canvas = canvasRef.current;
     const scoreResult = scoreRef.current;
@@ -302,6 +347,8 @@ const DiceRoller: React.FC = () => {
 
       wall.addShape(box, new CANNON.Vec3(x, wallHeight / 2 - 7, z), quaternion);
     }
+    // initial scene reset complete
+    // ------------------------------------------
 
     physicsWorld.addBody(wall);
 
@@ -313,12 +360,12 @@ const DiceRoller: React.FC = () => {
     ring.position.y = -7 + 0.01; // 살짝 위로
     scene.add(ring);
 
-    const newDice = generateDice(params.numberOfDice, scene, physicsWorld, 1); // generate DICE
+    const newDice = generateDice(numDice, scene, physicsWorld, 1); // generate DICE
     diceArrayRef.current = newDice;
 
     
     scoredRef.current = false;
-    
+
     const render = () => {
       physicsWorld.fixedStep();
 
@@ -362,10 +409,6 @@ const DiceRoller: React.FC = () => {
           allSleepingLocal = false;
         }
         
-        // 디버깅용 로그
-        if (diceState === 'roll') {
-          console.log("Dice", dice.id, "selected:", dice.selected, "sleepState:", dice.body.sleepState, "SLEEPING:", CANNON.Body.SLEEPING, "allSleepingLocal:", allSleepingLocal);
-        }
       }
 
       // 상태 업데이트
@@ -374,67 +417,26 @@ const DiceRoller: React.FC = () => {
       // FSM 상태 전환 로직
       if (diceState === 'roll' && allSleepingLocal) {
         // 굴리기 완료 -> stop 상태로 전환
-        console.log("Roll completed, transitioning to stop state");
         setStopState();
         // 점수 계산
         if (!scoredRef.current) {
-          console.log("Calculating scores...");
-          const allDice = diceArrayRef.current;
-          const faces = allDice.map(d => d.getScore());
-          console.log("Calculated faces:", faces);
+        const allDice = diceArrayRef.current;
+        const faces = allDice.map(d => d.getScore());
           setTopFaces(faces);
           if (scoreRef.current) {
             scoreRef.current.innerHTML = faces.join(', ');
           }
           scoredRef.current = true;
-        } else {
-          console.log("Already scored, skipping score calculation");
         }
       } else if (diceState === 'animate' && allArrived) {
         // 애니메이션 완료 -> stop 상태로 전환
-        console.log("Animation completed, transitioning to stop state");
+
         setStopState();
-      }
-      
-      // 디버깅용 로그
-      if (diceState === 'roll') {
-        console.log("Roll state - allSleepingLocal:", allSleepingLocal, "scoredRef.current:", scoredRef.current);
-      }
-      
-      // 디버깅용 로그
-      if (diceState === 'roll' && allSleepingLocal) {
-        console.log("Roll state - allSleepingLocal:", allSleepingLocal);
-      }
-      if (diceState === 'animate') {
-        console.log("Animate state - allArrived:", allArrived);
       }
 
       // 렌더링 반복
       renderer.render(scene, camera);
       requestAnimationFrame(render);
-    };
-
-
-    const initialThrow = () => {
-      if (rollCount >= maxRollCount) return;
-      scoredRef.current = false;
-      if (!scoreResult) return;
-      scoreResult.innerHTML = '';
-      
-      diceArrayRef.current.forEach((d, i) => {
-        d.body.velocity.setZero();
-        d.body.angularVelocity.setZero();
-        d.body.position = new CANNON.Vec3(4, i * 1.5, 0);
-        d.mesh.position.copy(d.body.position);
-        d.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
-        const threeQuat = d.mesh.quaternion;
-        d.body.quaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
-        const force = 3 + 5 * Math.random();
-        d.body.applyImpulse(new CANNON.Vec3(-force, force, 0), new CANNON.Vec3(0, 0, 0.2));
-        d.body.allowSleep = true;
-        d.body.wakeUp(); // 반드시 wakeUp!
-      });
-      setRollCount(prev => prev + 1);
     };
 
     window.addEventListener('resize', () => {
@@ -443,7 +445,7 @@ const DiceRoller: React.FC = () => {
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    initialThrow();
+    // 초기화 useEffect에서 createDice 호출은 제거(던지는 쪽에서만 생성)
     render();
 
     const raycaster = new THREE.Raycaster();
@@ -588,22 +590,99 @@ const DiceRoller: React.FC = () => {
     return () => {
       canvas.removeEventListener('click', onClick);
     };
-  }, [showResult]);
+  }, []); // 이 useEffect는 컴포넌트 마운트 시 한 번만 실행되어야 합니다.
 
     // 결과 화면 표시를 위한 useEffect 추가
     useEffect(() => {
-      if (savedScores.size === selectableCategories) {
-        setShowResult(true);
-      }
+    if (savedScores.size === selectableCategories) {
+      setShowResult(true);
+    }
     }, [savedScores, selectableCategories]);
 
     useEffect(() => {
-      if (showResult) {
-        setTimeout(() => setResultVisible(true), 50);
-      } else {
-        setResultVisible(false);
-      }
+    if (showResult) {
+    setTimeout(() => setResultVisible(true), 50);
+    } else {
+      setResultVisible(false);
+    }
     }, [showResult]);
+
+  // --- ✨ 맨 처음 시작 시 주사위 굴리기 로직 ---
+  useEffect(() => {
+    // 라우터 쿼리가 준비될 때까지 기다립니다.
+    if (multiplay === undefined || diceArrayRef.current.length === 0) {
+      return;
+    }
+
+    // 싱글플레이 모드일 경우, 자동으로 첫 주사위를 굴립니다.
+    if (multiplay === 'false') {
+      // 게임이 아직 시작되지 않았을 때 (rollcount가 0일 때) 한 번만 실행합니다.
+      if (rollcount === 0 && diceState === 'stop') {
+        console.log("🎲 Single player mode: Performing initial throw.");
+        // 렌더링이 안정된 후 실행하기 위해 짧은 지연을 줍니다.
+        const timer = setTimeout(() => handleRollDice(), 100);
+        return () => clearTimeout(timer);
+      }
+    }
+    // 멀티플레이 모드 ('true')의 경우:
+    // 서버로부터 `game:update` 또는 `game:action` 이벤트를 받아 게임을 시작하므로,
+    // 클라이언트에서 자동으로 굴릴 필요가 없습니다. 이 컴포넌트는 서버의 지시를 기다립니다.
+  }, [multiplay, rollcount, diceState]);
+
+
+  // handle socket (only with game:update)
+  useEffect(() => {
+  if (!socket) return;
+
+  const handleGameUpdate = (newState: Partial<GameState>) => {
+    console.log('📦 Game state updated from server:', newState);
+    // Zustand 스토어의 상태를 한 번에 업데이트
+    useGameStore.setState(newState);
+  };
+
+  socket.on('game:update', handleGameUpdate);
+
+  return () => {
+    socket.off('game:update', handleGameUpdate);
+  };
+}, [socket]);
+
+  // 내 행동(예: 주사위 굴리기)
+  const handleRollDice = () => {
+    if (!canRoll) return;
+    // 실제 주사위 굴리기 로직 (예: 물리량 포함)
+    throwDiceToWorld(diceArrayRef.current, makeRandomImpulses(numDice));
+    const dicePayload = { dicePhysics };
+    setRollCount(rollcount+1);
+    setRollingState();
+
+    if (socket){
+      socket.emit("game:action", { roomId, type: "roll", payload: dicePayload });
+      // 던지는 쪽(myturn)에서는 주사위 새로 만들지 않고, 기존 주사위에 velocity만 적용
+    }
+    
+  };
+
+  // 점수 선택 등도 동일하게 emit
+  const handleScoreClick = (category: string, score: number) => {
+    if (savedScores.has(category)) return;
+    setSavedScores(prev => new Map(prev.set(category, score)));
+    // dicePhysics를 payload로 보냄
+    socket?.emit("game:action", { roomId, type: "selectScore", payload: { category, score, dicePhysics } });
+    setIsMyTurn(false);
+    // 던지는 쪽(myturn)에서는 주사위 새로 만들지 않고, 기존 주사위에 velocity만 적용
+  };
+
+  // 자신의 턴이 아닐 때 상대방의 dicePhysics 신호로 throw
+  useEffect(() => {
+    if (!isMyTurn && dicePhysics.length > 0) {
+      // 던지는 쪽(myturn)에서는 주사위 새로 만들지 않고, 기존 주사위에 velocity만 적용
+      diceArrayRef.current.forEach((d, i) => {
+        d.body.velocity.set(dicePhysics[i].velocity.x, dicePhysics[i].velocity.y, dicePhysics[i].velocity.z);
+        d.body.wakeUp();
+      });
+    }
+  }, [isMyTurn, dicePhysics]);
 
   return (
     <div className="relative w-full h-screen">
@@ -633,7 +712,7 @@ const DiceRoller: React.FC = () => {
       <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 text-center">
         
         <button
-          onClick={throwDice}
+          onClick={handleRollDice}
           disabled={!canRoll}
           className={`ml-4 px-4 py-2 rounded shadow text-white ${
             !canRoll
@@ -641,7 +720,7 @@ const DiceRoller: React.FC = () => {
               : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          Throw the Dice ({rollCount}/{maxRollCount}) - {diceState} [{gamePhase}]
+          Throw the Dice ({rollcount}/{maxRollCount}) - {diceState} [{isMyTurn ? 'myturn' : 'oppturn'}]
         </button>
       </div> 
       {showResult && (

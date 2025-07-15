@@ -15,4 +15,4 @@ export class Dice204060 extends Dice {
     // 새로운 텍스처로 메시 재생성
     this.mesh = this.createDiceMesh();
   }
-} 
+}

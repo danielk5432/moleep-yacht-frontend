@@ -7,7 +7,7 @@ import { Dice } from '../types/dice';
 
 interface ScoreTableProps {
   dice: number[];
-  onScoreClick: (category: string, score: number, diceArr: Dice[]) => void;
+  onScoreClick: (category: string, score: number) => void;
   savedScores: Map<string, number>;
   unSelected_category?: string[];
 }
@@ -59,7 +59,7 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ dice, onScoreClick, savedScores
                 : 'text-gray-900 cursor-pointer hover:text-blue-600')
           }
           onClick={() => {
-            if (!isUsed) onScoreClick(category, score, scoreData[score]);
+            if (!isUsed) onScoreClick(category, score);
           }}
         >
           {displayScore}
