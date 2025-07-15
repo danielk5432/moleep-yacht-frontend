@@ -43,7 +43,7 @@ const DiceRoller: React.FC = () => {
   const [turnPhase, setTurnPhase] = useState<TurnPhase>('roulette');
   const [rouletteResult, setRouletteResult] = useState<string | null>(null);
 
-  const [rollCount, setRollCount] = useState(0);
+  const [rollCount, setRollCount] = useState(1);
   const maxRollCount = 3;
 
   // FSM 상태 관리
@@ -51,12 +51,9 @@ const DiceRoller: React.FC = () => {
   const [isRolling, setIsRolling] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // 게임 상태 관리
-  const [gamePhase, setGamePhase] = useState<GamePhase>('myturn');
-
   // 상태에 따른 조건들
-  const canSelect = diceState === 'stop' && gamePhase === 'myturn';
-  const canRoll = diceState === 'stop' && rollCount < maxRollCount && gamePhase === 'myturn';
+  const canSelect = diceState === 'stop';
+  const canRoll = diceState === 'stop' && rollCount < maxRollCount;
   
   // 디버깅용 로그
   console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
@@ -116,13 +113,11 @@ const DiceRoller: React.FC = () => {
         break;
       case 'SCORE_POINT':
         console.log('📤 WebSocket: Sending score action');
-        setGamePhase('oppturn');
         console.log('🔄 Game Phase: myturn -> oppturn');
         break;
       case 'START_TURN':
         console.log('🔄 Game Phase: Starting new turn');
-        setGamePhase('myturn');
-        setRollCount(0);
+        setRollCount(1);
         break;
       case 'END_TURN':
         console.log('🔄 Game Phase: Ending turn');
@@ -152,7 +147,7 @@ const DiceRoller: React.FC = () => {
 
     // 점수 초기화
     setTopFaces([]);
-    setRollCount(0);
+    setRollCount(1);
     setAllSleeping(false);
     setRollingState(); // 초기 상태를 roll로 설정
 
@@ -172,7 +167,6 @@ const DiceRoller: React.FC = () => {
         d.body.allowSleep = true;
         d.body.wakeUp();
       });
-      setRollCount(1);
     }, 100); // 약간의 지연을 두어 생성이 완료된 후 던지기
   };
 
@@ -250,7 +244,8 @@ const DiceRoller: React.FC = () => {
     handleGameAction({ type: 'SCORE_POINT', payload: { category, score } });
 
     setTurnPhase('roulette');
-    
+    setRollCount(1);
+    setRollingState();
   };
 
   useEffect(() => {
@@ -488,7 +483,6 @@ const DiceRoller: React.FC = () => {
         d.body.allowSleep = true;
         d.body.wakeUp(); // 반드시 wakeUp!
       });
-      setRollCount(prev => prev + 1);
     };
 
     window.addEventListener('resize', () => {

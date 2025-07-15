@@ -18,7 +18,7 @@ const Wheel = dynamic(
   const good_data = [
     { option: '456Dice', image: { uri: '/images/456_dice.png', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } },
     { option: 'OneMoreDice', image: { uri: '/images/onemore_dice.png', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } },
-    { option: 'HighDice', image: { uri: '/images/high_dice', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } },
+    { option: 'HighDice', image: { uri: '/images/high_dice.png', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } },
     { option: 'WildDice', image: { uri: '/images/wild_dice.png', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } },
   ];
 
