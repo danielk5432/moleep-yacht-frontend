@@ -113,7 +113,7 @@ export function calculateScores(dice: Dice[]): Record<string, Record<number, Dic
         const wild = isWild ? dice.find(d => d instanceof DiceWild)! : null;
 
         return {
-          [face * 4]: wild ? matched.concat(wild) : matched
+          [face * 5]: wild ? matched.concat(wild) : matched
         };
       }
 

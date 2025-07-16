@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
+import { playSound } from '../utils/playSound';
 
 const GameSettingsPage: React.FC = () => {
   const router = useRouter();
@@ -100,7 +101,10 @@ const GameSettingsPage: React.FC = () => {
         </div>
 
         <button
-          onClick={handleStart}
+          onClick={() => {
+            playSound('/sounds/click_button.wav');
+            handleStart();
+          }}
           className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
         >
           게임 시작

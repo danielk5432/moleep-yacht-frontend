@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { useSocketStore } from "../stores/socketStore";
+import { playSound } from '../utils/playSound';
 
 const good_data = [
   { option: '456Dice', image: { uri: '/images/456_dice_only.png' } },
@@ -143,13 +144,19 @@ const GoodDiceSelectionPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   disabled={matching}
-                  onClick={() => handleChange(option, -1)}
+                  onClick={() => {
+                    playSound('/sounds/click_button.wav');
+                    handleChange(option, -1);
+                  }}
                   className="px-3 py-0.5 text-lg rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                 >−</button>
                 <span className="text-lg font-medium"> {counts[option]} </span>
                 <button
                   disabled={matching}
-                  onClick={() => handleChange(option, 1)}
+                  onClick={() => {
+                    playSound('/sounds/click_button.wav');
+                    handleChange(option, 1);
+                  }}
                   className="px-3 py-0.5 text-lg rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                 >+</button>
               </div>
@@ -162,7 +169,10 @@ const GoodDiceSelectionPage: React.FC = () => {
         </div>
 
         <button
-          onClick={handleStart}
+        onClick={() => {
+            playSound('/sounds/click_button.wav');
+            handleStart();
+          }}
           disabled={totalSelected !== MAX_TOTAL || matching}
           className={`w-full py-2 rounded-md text-white font-semibold transition
             disabled:bg-gray-400 disabled:cursor-not-allowed
@@ -173,8 +183,11 @@ const GoodDiceSelectionPage: React.FC = () => {
         </button>
         
         <button
-          onClick={handleCancel}
-          className={`w-full mt-2 py-2 rounded-md text-white font-semibold transition bg-red-500 hover:bg-red-600`}
+          onClick={() => {
+          playSound('/sounds/click_button.wav');
+          handleCancel();
+        }}
+          className={`w-full mt-2 py-2 rounded-md text-white font-semibold transition bg-gray-300 hover:bg-gray-400`}
         >
           {matching ? '매칭 취소' : '뒤로 가기'}
         </button>

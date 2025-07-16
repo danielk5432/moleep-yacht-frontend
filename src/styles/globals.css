@@ -12,8 +12,12 @@
   --foreground: #171717;
 }
 
-html, body {
-  overflow: hidden;
+html,
+body {
+  padding: 0;
+  margin: 0;
+  /* height와 overflow 속성을 제거하거나 아래처럼 auto로 설정합니다. */
+  height: auto;
+  overflow: auto;
 }
-
 

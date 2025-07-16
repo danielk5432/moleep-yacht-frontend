@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { api } from '../utils/api';
 import Image from 'next/image';
+import { playSound } from '../utils/playSound';
 
 interface User {
   id: string;
@@ -87,10 +88,13 @@ const MainPage: React.FC = () => {
 
               {/* 오른쪽: 설명서 버튼 (모바일 전용) */}
               <button
-                onClick={() => setIsManualOpen(true)}
-                className="text-xs mr-2 text-gray-600 underline hover:text-blue-800"
+                onClick={() => {
+                  playSound('/sounds/click_button.wav');
+                  setIsManualOpen(true)}
+                }
+                className="text-md p-2 mr-4 bg-blue-500 text-white hover:text-blue-800"
               >
-                설명서
+                설명서 보기
               </button>
             </div>
             {user && (
@@ -122,11 +126,15 @@ const MainPage: React.FC = () => {
       {/* 설명서 모달 */}
       {isManualOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto p-4">
-            <img src="/images/manual.jpg" alt="게임 설명서" className="w-full h-auto rounded" />
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-fit max-h-[90vh] overflow-y-auto p-4">
+            <img
+              src="/images/manual.jpg"
+              alt="게임 설명서"
+              className="max-w-[70vw] h-auto object-contain rounded"
+            />
             <div className="text-right mt-4">
               <button
-                onClick={() => setIsManualOpen(false)}
+                onClick={() => {setIsManualOpen(false); playSound('/sounds/click_button.wav');}}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
                 닫기
@@ -159,15 +167,15 @@ const MainPage: React.FC = () => {
             description="실시간 매칭으로 친구와 대결하세요!"
             href="/game-settings-multi"
             bgColor="bg-yellow-100"
-            pointColor = "bg-blue-500"
+            pointColor = "bg-yellow-500"
           />
           <Card
             image="/images/rank.png"
             title="랭킹"
             description="당신의 순위를 확인해보세요!"
-            href="#"
+            href="/ranking"
             bgColor="bg-green-100"
-            pointColor = "bg-blue-500"
+            pointColor = "bg-green-500"
           />
         </div>
       </main>
@@ -183,7 +191,8 @@ const Card = ({ image, title, description, href, bgColor, pointColor}: { image: 
       </div>
       <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>
       <p className="text-gray-600 mb-6 text-center">{description}</p>
-      <Link href={href} className={`inline-block px-6 py-3 ${pointColor} text-white rounded-md hover:brightness-110 transition-colors`}>
+      <Link href={href} className={`inline-block px-6 py-3 ${pointColor} text-white rounded-md hover:brightness-110 transition-colors`}
+      onClick={() => playSound('/sounds/click_button.wav')} >
         시작하기
       </Link>
     </div>

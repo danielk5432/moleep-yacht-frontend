@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState} from 'react';
+import Link from 'next/link'
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { Dice } from '../types/dice';
@@ -8,6 +9,7 @@ import { generateDice } from '../utils/generateDice';
 import DiceRoulette from './DiceRoulette';
 import ScoreTable from './ScoreTable';
 import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
+
 import { playSound } from '@/utils/playSound';
 import DicePoolStatus from '@/components/DicePoolStatus';
 import { useRouter } from 'next/router';
@@ -867,10 +869,24 @@ const stopChargingAndThrow = () => {
           }}
         >
           <div className={`bg-white rounded-xl shadow-lg px-20 py-8 text-center transition-opacity duration-700 ${resultVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="text-2xl font-bold mb-4">🎉 게임 종료!</div>
+            <div className="text-2xl font-bold mb-4">게임 종료!</div>
             <div className="text-lg mb-2">Total 점수</div>
             <div className="text-4xl font-extrabold text-blue-600">
               {totalScore}
+            </div>
+            <div className="pt-4 flex justify-center items-center gap-4">
+              <Link 
+                href="/" 
+                className="px-5 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              >
+                홈으로 가기
+              </Link>
+              <Link 
+                href="/ranking" 
+                className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                랭킹 보기
+              </Link>
             </div>
           </div>
         </div>
