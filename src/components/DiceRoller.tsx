@@ -220,50 +220,83 @@ const stopChargingAndThrow = () => {
   };
 
   useEffect(() => {
-  if (!socket) return;
+    if (!socket) return;
 
-  // 이벤트 핸들러 정의
+    // 이벤트 핸들러 정의
 
-  // 1. 매칭 성공 시: 모든 플레이어의 점수판 초기화
-  const handleMatchMatched = (matchData: { players: any[] }) => {
-    const initialScores: Record<string, PlayerScoreData> = {};
-    matchData.players.forEach(player => {
-      initialScores[player.id] = {
-        nickname: player.nickname,
-        scores: player.scores, // 서버에서 초기화된 scores 객체
-      };
-    });
-    setAllPlayerScores(initialScores);
-    console.log('👥 All player scores initialized:', initialScores);
-  };
+      // 1. 매칭 성공 시: 모든 플레이어의 점수판 초기화
+    const handleMatchMatched = (matchData: { players: any[] }) => {
+      const initialScores: Record<string, PlayerScoreData> = {};
+      matchData.players.forEach(player => {
+        initialScores[player.id] = {
+          nickname: player.nickname,
+          scores: player.scores, // 서버에서 초기화된 scores 객체
+        };
+      });
+      setAllPlayerScores(initialScores);
+      console.log('👥 All player scores initialized:', initialScores);
+    };
 
-  // 2. 점수 업데이트 시: 특정 플레이어의 점수만 갱신
-  const handleScoreUpdated = (data: { playerId: string; category: string; score: number; nickname: string; }) => {
-    setAllPlayerScores(prevScores => {
-      // 이전 상태를 복사
-      const newScores = { ...prevScores };
-      
-      // 업데이트할 플레이어가 존재하는지 확인
-      if (newScores[data.playerId]) {
-        // 해당 플레이어의 점수판에 새로운 점수 기록
-        newScores[data.playerId].scores[data.category] = data.score;
-      }
-      
-      return newScores;
-    });
-    console.log(`📊 Score updated for ${data.nickname}: ${data.category} -> ${data.score}`);
-  };
+    // 2. 점수 업데이트 시: 특정 플레이어의 점수만 갱신
+    const handleScoreUpdated = (data: { playerId: string; category: string; score: number; nickname: string; }) => {
+      setAllPlayerScores(prevScores => {
+        // 이전 상태를 복사
+        const newScores = { ...prevScores };
+        
+        // 업데이트할 플레이어가 존재하는지 확인
+        if (newScores[data.playerId]) {
+          // 해당 플레이어의 점수판에 새로운 점수 기록
+          newScores[data.playerId].scores[data.category] = data.score;
+        }
+        
+        return newScores;
+      });
+      console.log(`📊 Score updated for ${data.nickname}: ${data.category} -> ${data.score}`);
+    };
 
-  // 소켓 리스너 등록
-  socket.on('matchmaking:matched', handleMatchMatched);
-  socket.on('score:updated', handleScoreUpdated);
+    // 소켓 리스너 등록
+    socket.on('matchmaking:matched', handleMatchMatched);
+    socket.on('score:updated', handleScoreUpdated);
 
-  // 컴포넌트 언마운트 시 리스너 정리
-  return () => {
-    socket.off('matchmaking:matched', handleMatchMatched);
-    socket.off('score:updated', handleScoreUpdated);
+    // 컴포넌트 언마운트 시 리스너 정리
+    return () => {
+      socket.off('matchmaking:matched', handleMatchMatched);
+      socket.off('score:updated', handleScoreUpdated);
     };
   }, [socket]);
+
+  useEffect(() => {
+    // roomId와 socket이 준비된 후에만 실행
+    if (!roomId || !socket) return;
+
+    // 1초 후에도 allPlayerScores가 비어있다면, 초기 이벤트를 놓친 것으로 간주
+    const timeoutId = setTimeout(() => {
+      if (Object.keys(allPlayerScores).length === 0) {
+        console.log("초기 데이터를 놓친 것 같습니다. 서버에 백업 데이터를 요청합니다...");
+
+        socket.emit('game:requestInitialData', roomId, (response: { matchData?: any }) => {
+          if (response.matchData) {
+            console.log("백업 데이터를 성공적으로 받았습니다:", response.matchData);
+            // 받은 데이터로 상태를 초기화
+            const initialScores: Record<string, PlayerScoreData> = {};
+            response.matchData.players.forEach((player: any) => {
+              // 서버에 scores가 없으므로 클라이언트에서 만들어줍니다.
+              const playerScores: Record<string, number | null> = {};
+              // 필요하다면 여기서 CATEGORIES 배열로 초기화
+              initialScores[player.id] = {
+                nickname: player.nickname,
+                scores: playerScores,
+              };
+            });
+            setAllPlayerScores(initialScores);
+          }
+        });
+      }
+    }, 1000); // 1초의 여유시간
+
+    return () => clearTimeout(timeoutId);
+
+  }, [roomId, socket, allPlayerScores]); // allPlayerScores도 의존성에 추가
 
   const throwDice = (power: number) => {
     if (!canRoll) return;
@@ -322,19 +355,32 @@ const stopChargingAndThrow = () => {
   
 
   const handleScoreClick = (category: string, score: number, diceArr: Dice[]) => {
-    if (savedScores.has(category)) return; // 이미 선택된 카테고리면 무시
-    playSound('./sounds/click.wav',5000);
-    // 새로운 점수 Map을 만들어 먼저 계산
-    const updated = new Map(savedScores);
-    updated.set(category, score);
+    if (savedScores.has(category)) return;
+    playSound('/sounds/click.wav', 5000);
+    
+    setSavedScores(prev => new Map(prev).set(category, score));
 
-    const nextScoreCount = updated.size;
+    // ✅ 자기 자신(local)의 점수도 allPlayerScores에 반영
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      setAllPlayerScores(prevScores => {
+        const newScores = { ...prevScores };
+        if (newScores[userId]) {
+          newScores[userId].scores[category] = score;
+        }
+        return newScores;
+      });
+    }
 
-    // 점수 저장
-    setSavedScores(updated);
-
-    // 게임 액션 호출
-    handleGameAction({ type: 'SCORE_POINT', payload: { category, score } });
+    // ✅ 서버에 점수 획득 사실을 브로드캐스트 해달라고 요청
+    if (socket && roomId && userId) {
+        socket.emit('score:update', {
+            roomId: roomId,
+            playerId: userId,
+            category: category,
+            score: score
+        });
+    }
 
     setTurnPhase('roulette');
     setRollCount(1);
