@@ -453,39 +453,20 @@ const stopChargingAndThrow = () => {
       // FSM 상태 전환 로직
       if (diceState === 'roll' && allSleepingLocal) {
         // 굴리기 완료 -> stop 상태로 전환
-        console.log("Roll completed, transitioning to stop state");
         setStopState();
         // 점수 계산
         if (!scoredRef.current) {
-          console.log("Calculating scores...");
           const allDice = diceArrayRef.current;
           const faces = allDice.map(d => d.getScore());
-          console.log("Calculated faces:", faces);
           setTopFaces(faces);
           if (scoreRef.current) {
             scoreRef.current.innerHTML = faces.join(', ');
           }
           scoredRef.current = true;
-        } else {
-          console.log("Already scored, skipping score calculation");
         }
       } else if (diceState === 'animate' && allArrived) {
         // 애니메이션 완료 -> stop 상태로 전환
-        console.log("Animation completed, transitioning to stop state");
         setStopState();
-      }
-      
-      // 디버깅용 로그
-      if (diceState === 'roll') {
-        console.log("Roll state - allSleepingLocal:", allSleepingLocal, "scoredRef.current:", scoredRef.current);
-      }
-      
-      // 디버깅용 로그
-      if (diceState === 'roll' && allSleepingLocal) {
-        console.log("Roll state - allSleepingLocal:", allSleepingLocal);
-      }
-      if (diceState === 'animate') {
-        console.log("Animate state - allArrived:", allArrived);
       }
 
       // 렌더링 반복
