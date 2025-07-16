@@ -1,5 +1,6 @@
 'use client';
 
+import { api } from '../utils/api'; // ✅ api 유틸리티 임포트
 import React, { useEffect, useRef, useState} from 'react';
 import Link from 'next/link'
 import * as THREE from 'three';
@@ -793,11 +794,28 @@ const stopChargingAndThrow = () => {
     useEffect(() => {
       if (savedScores.size === selectableCategories) {
         setShowResult(true);
+
       }
     }, [savedScores, selectableCategories]);
 
     useEffect(() => {
       if (showResult) {
+        if(totalScore > 0) {
+          // 멀티플레이 여부에 따라 모드를 결정합니다.
+          const mode = isMultiplayer ? 'multiplayer' : 'normal';
+          
+          console.log(`Submitting score via API: ${totalScore}, mode: ${mode}`);
+          
+          api.submitScore(totalScore, mode)
+            .then(response => {
+              console.log('✅ Score submitted successfully via API:', response.message);
+            })
+            .catch(err => {
+              // 사용자에게 에러를 알려주는 UI를 추가할 수도 있습니다.
+              console.error('⚠️ Failed to submit score via API:', err);
+            });
+        }
+
         setTimeout(() => setResultVisible(true), 50);
       } else {
         setResultVisible(false);

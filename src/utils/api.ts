@@ -86,40 +86,61 @@ export const api = {
     }
   },
 
-  getNormalRankings: async (): Promise<RankEntry[]> => {
-    console.log('Fetching normal mode rankings...');
-    // 예시: const response = await apiClient.get('/rankings/normal');
-    // return response.data;
+  /**
+   * 게임 점수를 서버에 제출합니다.
+   * @param score - 제출할 점수
+   * @param mode - 게임 모드 ('normal' 또는 'multiplayer')
+   */
+  submitScore: async (score: number, mode: 'normal' | 'multiplayer') => {
+    const token = localStorage.getItem('authToken'); // 토큰 저장 방식에 맞게 수정
+    if (!token) {
+      throw new Error('Access Token not found. Please log in.');
+    }
 
-    // --- 임시 목업 데이터 ---
-    await new Promise(resolve => setTimeout(resolve, 500)); // 로딩 시뮬레이션
-    return [
-      { rank: 1, nickname: 'ImTheFirst', score: 290, picture: '/images/YyachTify_Square.png' },
-      { rank: 2, nickname: 'HIHI', score: 273, picture: '/images/YyachTify_Square.png' },
-      { rank: 3, nickname: 'MolLeep', score: 266, picture: '/images/YyachTify_Square.png' },
-      { rank: 4, nickname: 'GoodBOY', score: 251, picture: '/images/YyachTify_Square.png' },
-      { rank: 5, nickname: 'BABO', score: 250, picture: '/images/YyachTify_Square.png' },
-    ].sort((a, b) => b.score - a.score).map((user, index) => ({ ...user, rank: index + 1 }));
-    // --- 임시 데이터 끝 ---
+    // Next.js 내부 API를 호출하므로 API_BASE_URL이 필요 없습니다.
+    const response = await fetch('/api/rankings/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`, // 인증 헤더 추가
+      },
+      body: JSON.stringify({ score, mode }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to submit score.');
+    }
+
+    return response.json();
   },
 
-  /**
-   * 멀티플레이 모드 랭킹 데이터를 가져옵니다.
-   * TODO: 실제 백엔드 API 엔드포인트로 교체하세요.
-   */
+  getNormalRankings: async (): Promise<RankEntry[]> => {
+    try {
+      // Next.js 내부 API를 호출하므로, 전체 URL 대신 상대 경로를 사용합니다.
+      const response = await fetch('/api/rankings/normal');
+      if (!response.ok) {
+        throw new Error('Failed to fetch normal rankings');
+      }
+      return response.json();
+    } catch (error) {
+      console.error('API Error (Normal Rankings):', error);
+      return []; // 에러 발생 시 빈 배열 반환하여 페이지가 깨지는 것을 방지
+    }
+  },
+
+  // ✅ 멀티플레이 모드 랭킹 가져오기 (실제 API 호출)
   getMultiplayerRankings: async (): Promise<RankEntry[]> => {
-    console.log('Fetching multiplayer mode rankings...');
-    // 예시: const response = await apiClient.get('/rankings/multiplayer');
-    // return response.data;
-    
-    // --- 임시 목업 데이터 ---
-    await new Promise(resolve => setTimeout(resolve, 500)); // 로딩 시뮬레이션
-    return [
-      { rank: 1, nickname: 'NOName', score: 270, picture: '/images/YyachTify_Square.png' },
-      { rank: 2, nickname: 'NicePlayer', score: 253, picture: '/images/YyachTify_Square.png' },
-      { rank: 3, nickname: 'YachTiFy', score: 222, picture: '/images/YyachTify_Square.png' },
-    ].sort((a, b) => b.score - a.score).map((user, index) => ({ ...user, rank: index + 1 }));
-    // --- 임시 데이터 끝 ---
+    try {
+      const response = await fetch('/api/rankings/multiplayer');
+      if (!response.ok) {
+        throw new Error('Failed to fetch multiplayer rankings');
+      }
+      return response.json();
+    } catch (error) {
+      console.error('API Error (Multiplayer Rankings):', error);
+      return [];
+    }
   },
 
   // 계정 삭제
