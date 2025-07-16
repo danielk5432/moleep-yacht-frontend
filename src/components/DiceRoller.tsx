@@ -95,7 +95,7 @@ const DiceRoller: React.FC = () => {
   function getDynamicFixedPositions(n: number): THREE.Vector3[] {
     const spacing = 1.5;
     const startZ = -((n - 1) * spacing) / 2; // 중앙 정렬
-    const x = 6; // 오른쪽 정렬 기준 X 위치
+    const x = 4.5; // 오른쪽 정렬 기준 X 위치
     const y = 0;
 
     const positions: THREE.Vector3[] = [];
@@ -402,9 +402,10 @@ const stopChargingAndThrow = () => {
     sceneRef.current = scene;
 
     const isPortrait = window.innerHeight > window.innerWidth;
+
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight), 0.1, 300);
 
-    if (isPortrait) {
+    if (isPortrait||isMultiplayer) {
       // 세로가 더 길 경우 (모바일 세로 모드 등)
       // 1. 카메라를 조금 뒤로 이동 (y값을 15 -> 20으로 증가)
       camera.position.set(0, 20, 0);

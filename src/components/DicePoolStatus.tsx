@@ -40,23 +40,26 @@ const DicePoolStatus: React.FC = () => {
   }, [socket]); // socket 객체가 변경될 때만 이 효과를 재실행
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg w-48 border">
-      <h3 className="text-center font-bold text-gray-800 mb-3 border-b pb-2">남은 좋은 주사위</h3>
-      <div className="space-y-3">
-        {/* 4. 정의된 주사위 정보를 바탕으로 UI를 렌더링 */}
-        {GOOD_DICE_DETAILS.map(dice => (
-          <div key={dice.name} className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Image src={dice.src} alt={dice.name} width={32} height={32} />
-              <span className="ml-2 font-semibold text-gray-700">{dice.name}</span>
-            </div>
-            <span className="font-bold text-lg text-blue-600">
-              x {counts[dice.name] || 0}
-            </span>
+    <div className="flex justify-end">
+      <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg w-72 border">
+    <h3 className="text-center font-bold text-gray-800 mb-3 border-b pb-2 text-md">남은 좋은 주사위</h3>
+    <div className="grid grid-cols-2 gap-4">
+      {GOOD_DICE_DETAILS.map(dice => (
+        <div
+          key={dice.name}
+          className="flex items-center justify-between bg-white/60 p-3 rounded-md shadow-sm min-h-[70px]"
+        >
+          <div className="flex flex-col items-start">
+            <Image src={dice.src} alt={dice.name} width={64} height={64} />
           </div>
-        ))}
-      </div>
+          <span className="font-bold text-blue-600 text-lg">
+            x {counts[dice.name] || 0}
+          </span>
+        </div>
+      ))}
     </div>
+  </div>
+  </div>
   );
 };
 

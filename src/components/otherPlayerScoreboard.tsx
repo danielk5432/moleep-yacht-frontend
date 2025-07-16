@@ -14,9 +14,9 @@ interface OtherPlayersScoreboardProps {
 
 // 점수 행 컴포넌트 (재사용)
 const ScoreRow: React.FC<{ category: string; score: number | null }> = ({ category, score }) => (
-    <div className="flex justify-between items-center text-xs py-1 px-2">
+    <div className="flex justify-between items-center text-xs py-1 px-2.5">
         <span className="text-gray-600">{category}</span>
-        <span className="font-mono font-semibold text-gray-800">{score ?? '-'}</span>
+        <span className=" text-gray-800">{score ?? '-'}</span>
     </div>
 );
 
@@ -35,10 +35,9 @@ const OtherPlayersScoreboard: React.FC<OtherPlayersScoreboardProps> = ({ allPlay
         {otherPlayerIds.map((playerId) => {
           const player = allPlayerScores[playerId];
           if (!player) return null;
-
           return (
             <div key={playerId} className="bg-white rounded-lg shadow-md p-2">
-              <h3 className="text-sm md:text-base font-bold text-center mb-2 text-indigo-600 truncate">{player.nickname}</h3>
+              <h3 className="text-sm md:text-base font-bold text-center mb-2 text-blue-600 truncate">{player.nickname}</h3>
               <div className="space-y-1">
                 {/* Upper Section */}
                 <div className="bg-gray-50 rounded-md">
