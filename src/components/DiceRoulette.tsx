@@ -25,6 +25,9 @@ const ALL_DICE_DATA = [
     { option: 'OddDice', image: { uri: '/images/odd_dice.png', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } }, 
     { option: 'EvenDice', image: { uri: '/images/even_dice.png', sizeMultiplier: 1.2, offsetY: 120 }, style: { backgroundColor: 'white', textColor: 'black' } }, 
 ];
+
+
+
 // 주사위 이름으로 상세 정보를 빠르게 찾기 위한 Map
 const DICE_DETAILS_MAP = new Map(ALL_DICE_DATA.map(d => [d.option, d]));
 
@@ -51,19 +54,26 @@ const DiceRoulette: React.FC<DiceRouletteProps> = ({ onResult }) => {
 
     // 멀티플레이 모드일 경우: 소켓으로 데이터 요청
     if (multiplay === 'true' && roomId && socket) {
-      socket.emit('roulette:getDice', roomId, (response : { error?: string; selectedPool?: string[] }) => {
-        if (response.error) {
-          console.log('socket error: failed to get dice pool');
-          alert(response.error);
-        } else if (response.selectedPool) {
-          // 서버에서 받은 주사위 이름 목록을 룰렛 데이터 형식으로 변환
-          const rouletteData = response.selectedPool
-            .map(name => DICE_DETAILS_MAP.get(name))
-            .filter(Boolean); // 혹시 모를 undefined 값 제거
-          
-          setData(rouletteData as typeof ALL_DICE_DATA);
-        }
-      });
+      socket.emit(
+      'roulette:getDice',
+    roomId as string,
+    localStorage.getItem("userId") as string,
+    (response: { error?: string; selectedPool?: string[] }) => {
+      // 이 함수는 서버가 응답할 때 실행됩니다.
+      if (response.error) {
+        console.error("Server Error:", response.error);
+        alert(response.error);
+      } else if (response.selectedPool) {
+        console.log("Received dice from server:", response.selectedPool);
+        
+        // 받은 주사위로 룰렛 데이터 설정
+        const rouletteData = response.selectedPool
+          .map((name: string) => DICE_DETAILS_MAP.get(name))
+          .filter(Boolean) as typeof ALL_DICE_DATA;
+        setData(rouletteData);
+      }
+    }
+  );
     }
     // 싱글플레이 모드일 경우: 랜덤으로 데이터 생성
     else {

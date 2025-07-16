@@ -9,12 +9,36 @@ import DiceRoulette from './DiceRoulette';
 import ScoreTable from './ScoreTable';
 import { DiceState, GameState, GamePhase, GameAction } from '../types/game';
 import { playSound } from '@/utils/playSound';
+import DicePoolStatus from '@/components/DicePoolStatus';
+import { useRouter } from 'next/router';
+import { useSocketStore } from '../stores/socketStore';
+import OtherPlayersScoreboard from '@/components/otherPlayerScoreboard'
 
+interface PlayerScoreData {
+  nickname: string;
+  scores: Record<string, number | null>;
+}
 
 type TurnPhase = 'roulette' | 'rolling' | 'waitingResult';
 
 
 const DiceRoller: React.FC = () => {
+  const router = useRouter();
+  const [roomId, setRoomId] = useState<string | null>(null);
+  useEffect(() => {
+  if (!router.isReady) return;
+
+  const queryRoomId = router.query.roomId;
+
+  // queryRoomId가 있고, 타입이 string일 경우에만 state에 저장
+  if (typeof queryRoomId === 'string') {
+    setRoomId(queryRoomId);
+    }
+  }, [router.isReady, router.query])
+  let  { socket } = useSocketStore();
+  const isMultiplayer = router.query.multiplay === 'true';
+  const [allPlayerScores, setAllPlayerScores] = useState<Record<string, PlayerScoreData>>({});
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scoreRef = useRef<HTMLSpanElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer>(null);
@@ -57,8 +81,8 @@ const DiceRoller: React.FC = () => {
   const canRoll = diceState === 'stop' && rollCount < maxRollCount;
   
   // 디버깅용 로그
-  console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
-
+  //console.log("Current state:", diceState, "canRoll:", canRoll, "canSelect:", canSelect, "rollCount:", rollCount, "maxRollCount:", maxRollCount);
+  
   let unSelected_category: string[] = [];
   const raw = localStorage.getItem('unselectedCategories');
   if (raw) {
@@ -170,14 +194,74 @@ const stopChargingAndThrow = () => {
         break;
     }
   };
+  
 
   const handleRouletteResult = (result: string) => {
-    console.log('룰렛 결과:', result);
-    setRouletteResult(result);
-    setTimeout(() => {
-      setTurnPhase('rolling'); // 오버레이 사라지고 주사위 굴리기로 진행
-    }, 1000);
+  console.log('룰렛 결과:', result);
+  setRouletteResult(result);
+
+  setTimeout(() => {
+    setTurnPhase('rolling');
+  }, 1000);
+
+  // socket과 roomId state가 모두 유효할 때만 실행
+  if (socket && roomId) {
+    console.log("selectDice Sent!!!!!!!!1");
+
+    // ✅ 데이터를 하나의 객체로 묶어서 전송
+    socket.emit('roulette:selectDice', { 
+      roomId: roomId, 
+      playerId: localStorage.getItem("userId") as string, 
+      selectedDie: result 
+      });
+    }
   };
+
+  useEffect(() => {
+  if (!socket) return;
+
+  // 이벤트 핸들러 정의
+
+  // 1. 매칭 성공 시: 모든 플레이어의 점수판 초기화
+  const handleMatchMatched = (matchData: { players: any[] }) => {
+    const initialScores: Record<string, PlayerScoreData> = {};
+    matchData.players.forEach(player => {
+      initialScores[player.id] = {
+        nickname: player.nickname,
+        scores: player.scores, // 서버에서 초기화된 scores 객체
+      };
+    });
+    setAllPlayerScores(initialScores);
+    console.log('👥 All player scores initialized:', initialScores);
+  };
+
+  // 2. 점수 업데이트 시: 특정 플레이어의 점수만 갱신
+  const handleScoreUpdated = (data: { playerId: string; category: string; score: number; nickname: string; }) => {
+    setAllPlayerScores(prevScores => {
+      // 이전 상태를 복사
+      const newScores = { ...prevScores };
+      
+      // 업데이트할 플레이어가 존재하는지 확인
+      if (newScores[data.playerId]) {
+        // 해당 플레이어의 점수판에 새로운 점수 기록
+        newScores[data.playerId].scores[data.category] = data.score;
+      }
+      
+      return newScores;
+    });
+    console.log(`📊 Score updated for ${data.nickname}: ${data.category} -> ${data.score}`);
+  };
+
+  // 소켓 리스너 등록
+  socket.on('matchmaking:matched', handleMatchMatched);
+  socket.on('score:updated', handleScoreUpdated);
+
+  // 컴포넌트 언마운트 시 리스너 정리
+  return () => {
+    socket.off('matchmaking:matched', handleMatchMatched);
+    socket.off('score:updated', handleScoreUpdated);
+    };
+  }, [socket]);
 
   const throwDice = (power: number) => {
     if (!canRoll) return;
@@ -763,6 +847,18 @@ const stopChargingAndThrow = () => {
         </div>
         
       </div>
+      <div className="absolute top-24 right-4 md:right-8 z-30 w-1/3 max-w-sm md:max-w-md space-y-4">
+      {/* isMultiplayer가 true일 때만 렌더링 */}
+      {isMultiplayer && (
+        <>
+          <DicePoolStatus />
+          <OtherPlayersScoreboard 
+            allPlayerScores={allPlayerScores} 
+            currentUserId={localStorage.getItem('userId')} 
+          />
+        </>
+      )}
+    </div>
       {showResult && (
         <div
           className={`fixed inset-0 flex flex-col items-center justify-center z-50 transition-opacity duration-700 ${resultVisible ? 'opacity-100' : 'opacity-0'}`}
